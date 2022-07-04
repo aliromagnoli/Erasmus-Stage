@@ -14,7 +14,8 @@ Original file is located at
 
 
 import os
-import methods
+import methods1_traditional_ml
+import methods_evaluation_metrics
 import pandas as pd
 import numpy as np
 
@@ -26,14 +27,14 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 
-path = os.getcwd() + "/datasets"
+path = os.getcwd() + "\datasets"
 
 dataset = dict()
 dataset["ace"] = pd.read_csv(path + "/preprocessed_ace2.csv", index_col=0)
 dataset["copd"] = pd.read_csv(path + "/preprocessed_copd2.csv", index_col=0)
 dataset["ppi"] = pd.read_csv(path + "/preprocessed_ppi2.csv", index_col=0)
 
-SEED = [1009, 2839, 516, 2383, 273, 1625, 1324, 2791, 7, 1928] #for cross-validation
+SEED = [1009, 2839] #, 516, 2383, 273, 1625, 1324, 2791, 7, 1928] #for cross-validation
 SEED1 = 123
 TRAIN_SIZE = 0.5
 
@@ -56,16 +57,18 @@ for i in dataset:
     print("\nSplit number", j, "\n")
 
     #train-test split
-    set1, set2 = train_test_split(dataset[i], train_size=TRAIN_SIZE,
-                                  random_state=random.seed(SEED1), shuffle=True,
+    set1, set2 = train_test_split(dataset[i],
+                                  train_size=TRAIN_SIZE,
+                                  random_state=random.seed(SEED1),
+                                  shuffle=True,
                                   stratify=dataset[i]['label'])
 
     for k in range(2): #swapping train and test (kx2 cross-validation)
       if k == 0:
-        X_train, y_train, X_test, y_test = methods.final_ml_preprocessing(set1, set2, SEED1, 1)
+        X_train, y_train, X_test, y_test = methods1_traditional_ml.final_ml_preprocessing(set1, set2, SEED1, 1)
         print("First iteration")
       else:
-        X_train, y_train, X_test, y_test = methods.final_ml_preprocessing(set2, set1, SEED1, 1)
+        X_train, y_train, X_test, y_test = methods1_traditional_ml.final_ml_preprocessing(set2, set1, SEED1, 1)
         print("\nSecond iteration")
 
 
@@ -74,22 +77,21 @@ for i in dataset:
 
       for m in models :
         new_row = {"df" : i, "model" : m, "fold": j, "iteration": k+1}
-        pred, res = methods.ml_training(pred, models[m], SEED1, new_row, X_train, y_train, X_test, pd.DataFrame(y_test), res)
+        pred, res = methods1_traditional_ml.ml_training(pred, models[m], SEED1, new_row, X_train, y_train, X_test, pd.DataFrame(y_test), res)
 
 
 #computing avg and std of metrics
-avg_res = methods.compute_avg_std(res)
+avg_res = methods_evaluation_metrics.compute_avg_std(res)
 
 #computing rank-based metrics
 for l in range(len(pred)):
-  data = methods.arrange_predictions_and_targets(pred, l)
-  avg_res = methods.update_results(data, pred.loc[l, "df"], pred.loc[l, "model"], avg_res)
+  data = methods_evaluation_metrics.arrange_predictions_and_targets(pred, l)
+  avg_res = methods_evaluation_metrics.update_results(data, pred.loc[l, "df"], pred.loc[l, "model"], avg_res)
 
 #saving results in a csv file
-with open(path + "/ml_results_preprocessing_notestinvocab_2.csv", 'w', encoding = 'utf-8-sig') as f:
+path = os.getcwd() + "/results"
+with open(path + "/ml_results_preprocessing2.csv", 'w', encoding = 'utf-8-sig') as f:
   res.to_csv(f)
-with open(path + "/ml_avg_results_preprocessing_notestinvocab_2.csv", 'w', encoding = 'utf-8-sig') as f:
+with open(path + "/ml_avg_results_preprocessing2.csv", 'w', encoding = 'utf-8-sig') as f:
   avg_res.to_csv(f)
 
-
-print(7)
