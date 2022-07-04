@@ -1,3 +1,6 @@
+import pandas as pd
+from nltk.tokenize import regexp_tokenize
+import re
 from imblearn.over_sampling import RandomOverSampler
 
 """

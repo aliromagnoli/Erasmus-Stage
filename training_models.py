@@ -27,7 +27,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 
-path = os.getcwd() + "\datasets"
+path = os.getcwd() + "\datasets\preprocessed datasets"
 
 dataset = dict()
 dataset["ace"] = pd.read_csv(path + "/preprocessed_ace2.csv", index_col=0)
