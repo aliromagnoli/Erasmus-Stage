@@ -13,22 +13,20 @@ Original file is located at
 
 import os
 import ResIndex
-
-#import methods2_nn
-import methods_evaluation_metrics
+import methods1_ml as ml
+import methods2_nn as nn
+import methods_evaluation_metrics as eval
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import random
 import spacy
 spacy.cli.download("en_core_web_sm")
 
-approach = 1
 
 """## Data preparation"""
 
-path = os.getcwd() + "\datasets\preprocessed datasets"
-
 #import of the preprocessed datasets
+path = os.getcwd() + "\datasets\preprocessed datasets"
 dataset = dict()
 dataset["ace"] = pd.read_csv(path + "\preprocessed_ace.csv", index_col=0)
 dataset["copd"] = pd.read_csv(path + "\preprocessed_copd.csv", index_col=0)
@@ -38,7 +36,8 @@ dataset["ppi"] = pd.read_csv(path + "\preprocessed_ppi.csv", index_col=0)
 SEED = [1009, 2839] #, 516, 2383, 273, 1625, 1324, 2791, 7, 1928] #for cross-validation
 
 #parameters
-clean_text = True
+APPROACH = 2
+CLEAN_TEXT = True
 TRAIN_SIZE = 0.5
 SAMPLING = 1
 K = 95
@@ -46,25 +45,24 @@ K = 95
 """## Training with cross validation"""
 
 #creating dataset to save results
-
 res = pd.DataFrame()
 
-#creating dataset to save predictions
-
+#creating datasets and dictionaries to save predictions
 pred = pd.DataFrame() #ML predictions
 all_epochs_res = pd.DataFrame() #NN predictions
 best_train_preds_dict = {} #NN predictions
 best_valid_preds_dict = {} #NN predictions
 test_preds_dict = {} #NN predictions
 
-import methods1_ml
+
 for i in dataset:
 
   print("\nDATASET", i, "\n")
   j = 0 # fold number
 
-  if approach == 2:
-      dataset[i] = methods2_nn.maintain_only_text_label(dataset[i], clean_text)
+  if APPROACH == 2:
+      dataset[i] = nn.maintain_only_text_label(df = dataset[i],
+                                               clean_text = CLEAN_TEXT)
 
   #cross validation k folds
   for h in range(len(SEED)):
@@ -80,44 +78,86 @@ for i in dataset:
                                   stratify=dataset[i]['label'])
 
     for k in range(2): #swapping train and test (kx2 cross-validation)
-
         res_index = ResIndex.ResIndex(i, j, k+1)
 
         if k == 0:
-
-            if approach == 1:
-                X_train, y_train, X_test, y_test = methods1_ml.final_ml_preprocessing(set1, set2)
-            elif approach == 2:
-                train_data, valid_data, test_data = methods2_nn.final_nn_preprocessing(set1, set2, SEED[0], SAMPLING)
             print("First iteration")
+            if APPROACH == 1:
+                X_train, y_train, X_test, y_test = ml.final_ml_preprocessing(train = set1,
+                                                                             test = set2,
+                                                                             sampling = SAMPLING,
+                                                                             seed = SEED[0])
+            elif APPROACH == 2:
+                train_data, valid_data, test_data = nn.final_nn_preprocessing(train = set1,
+                                                                             test = set2,
+                                                                             sampling = SAMPLING,
+                                                                             seed = SEED[0])
 
         else:
-
-            if approach == 1:
-                X_train, y_train, X_test, y_test = methods1_ml.final_ml_preprocessing(set2, set1)
-            elif approach == 2:
-                train_data, valid_data, test_data = methods2_nn.final_nn_preprocessing(set1, set2, SEED[0], SAMPLING)
             print("\nSecond iteration")
+            if APPROACH == 1:
+                X_train, y_train, X_test, y_test = ml.final_ml_preprocessing(train = set2,
+                                                                             test = set1,
+                                                                             sampling = SAMPLING,
+                                                                             seed = SEED[0])
+            elif APPROACH == 2:
+                train_data, valid_data, test_data = nn.final_nn_preprocessing(train = set2,
+                                                                             test = set1,
+                                                                             sampling = SAMPLING,
+                                                                             seed = SEED[0])
 
-
-        if approach == 1:
-            methods1_ml.ml_training(X_train, y_train, X_test, pd.DataFrame(y_test), res_index)
-        elif approach == 2:
-            pred, res = methods2_nn.nn_training(train_data, valid_data, test_data, dataset[i], res_index, res)
+        if APPROACH == 1:
+            res = ml.ml_training(X_train = X_train,
+                                 y_train = y_train,
+                                 X_test = X_test,
+                                 y_test = pd.DataFrame(y_test),
+                                 pred = pred,
+                                 res = res,
+                                 res_index = res_index,
+                                 seed = SEED[0])
+        elif APPROACH == 2:
+            res = nn.nn_training(train_data = train_data,
+                           valid_data = valid_data,
+                           test_data = test_data,
+                           res_index = res_index,
+                           dataset = dataset[i],
+                           res = res,
+                           epochs_res = all_epochs_res,
+                           best_tr_pred_dict = best_train_preds_dict,
+                           best_v_pred_dict = best_valid_preds_dict,
+                           te_pred_dict = test_preds_dict)
 
 
 #computing avg and std of metrics
-avg_res = methods_evaluation_metrics.compute_avg_std(res)
+print(res)
+avg_res = eval.compute_avg_std(res = res, approach = APPROACH)
 
 #computing rank-based metrics
-for l in range(len(pred)):
-  data = methods_evaluation_metrics.arrange_predictions_and_targets(pred, l)
-  avg_res = methods_evaluation_metrics.update_results(data, pred.loc[l, "df"], pred.loc[l, "model"], avg_res)
+if APPROACH == 1:
+    for l in range(len(pred)):
+        data = eval.arrange_predictions_and_targets(pred = pred["pred"][l],
+                                                    target = pred["target"].values.tolist()[l])
+        avg_res = eval.update_results(pred_df = data,
+                                      df = pred.loc[l, "df"],
+                                      model = pred.loc[l, "model"],
+                                      avg_res = avg_res,
+                                      approach = APPROACH)
+elif APPROACH==2:
+    for l in range(2):
+        avg_res = eval.update_results(best_train_preds_dict[l], pred.loc[l, "df"], pred.loc[l, "model"], avg_res,
+                                      APPROACH, "train")
+        avg_res = eval.update_results(best_valid_preds_dict[l], pred.loc[l, "df"], pred.loc[l, "model"], avg_res,
+                                      APPROACH, "valid")
+        avg_res = eval.update_results(test_preds_dict[l], pred.loc[l, "df"], pred.loc[l, "model"], avg_res,
+                                      APPROACH, "test")
 
 #saving results in a csv file
-path = os.getcwd() + "/results"
-with open(path + "/ml_results_preprocessing2.csv", 'w', encoding = 'utf-8-sig') as f:
+path = os.getcwd() + "\\results"
+with open(path + "\\approach_" + str(APPROACH) + "_results.csv", 'w', encoding = 'utf-8-sig') as f:
   res.to_csv(f)
-with open(path + "/ml_avg_results_preprocessing2.csv", 'w', encoding = 'utf-8-sig') as f:
+with open(path + "\\approach_" + str(APPROACH) + "_avg_results.csv", 'w', encoding = 'utf-8-sig') as f:
   avg_res.to_csv(f)
+if APPROACH == 2:
+    with open(path + "\\approach_" + str(APPROACH) + "_all_epochs_results.csv", 'w', encoding='utf-8-sig') as f:
+        avg_res.to_csv(f)
 

@@ -26,13 +26,12 @@ def flatten_words(l, get_unique=False):
         return [w for sent in qa for w in sent]
 
 
-def final_ml_preprocessing(train, test):
+def final_ml_preprocessing(train, test, sampling, seed):
     """
     Given a training set "train" and a test set "test",
     it returns X_train, y_train, X_test, y_test, after applying
     a weighting scheme on the text and scaling the data.
     """
-    import training_models as trm
 
     # splitting in X and y for both train and test
     X_train = train.loc[:, train.columns != 'label']
@@ -40,8 +39,8 @@ def final_ml_preprocessing(train, test):
     X_test = test.loc[:, test.columns != 'label']
     y_test = test["label"]
 
-    if trm.SAMPLING is not None:
-        X_train, y_train = pr.oversampling(X_train, y_train, trm.SAMPLING, trm.SEED[0])
+    if sampling is not None:
+        X_train, y_train = pr.oversampling(X_train, y_train, sampling, seed)
 
     # resetting indexes for concat()
     X_train = X_train.reset_index(drop=True)
@@ -65,7 +64,7 @@ def final_ml_preprocessing(train, test):
     # scaling data
     scaler = MinMaxScaler()
     features = list(
-        set(X_train.columns) - set(["text", "text_clean", "label"]))  # all columns except text, text_clean and Label
+        set(X_train.columns) - {"text", "text_clean", "label"})  # all columns except text, text_clean and Label
     X_train = scaler.fit_transform(X_train[features].values)
     y_train = y_train.values
     X_test = scaler.transform(X_test[features].values)
@@ -73,14 +72,13 @@ def final_ml_preprocessing(train, test):
     return X_train, y_train, X_test, y_test
 
 
-def ml_training(X_train, y_train, X_test, y_test, res_index):
+def ml_training(X_train, y_train, X_test, y_test, pred, res, res_index, seed):
     """
     Given a dataset "pred" to store the predictions in, a model function "model",
     a int "seed", a dictionary "row" with all the information to update "pred",
     "X_train", "y_train" and "X_test", it trains the model, computes the predictions
     on the test set and updates "pred".
     """
-    import training_models as trm
 
     print(res_index.get_fold())
     for model_name in models:
@@ -90,12 +88,12 @@ def ml_training(X_train, y_train, X_test, y_test, res_index):
                    "iteration": res_index.get_iter()}
 
         if model_name == "RF":
-            m = models[model_name](class_weight="balanced", random_state=trm.SEED[0], n_estimators=50, max_depth=8)
+            m = models[model_name](class_weight="balanced", random_state=seed, n_estimators=50, max_depth=8)
         elif model_name == "SVM":
-            m = models[model_name](class_weight="balanced", random_state=trm.SEED[0])  # , C=0.5, max_iter=2000)
+            m = models[model_name](class_weight="balanced", random_state=seed)  # , C=0.5, max_iter=2000)
             m = CalibratedClassifierCV(m)
         else:
-            m = models[model_name](class_weight="balanced", random_state=trm.SEED[0])
+            m = models[model_name](class_weight="balanced", random_state=seed)
 
         m = m.fit(X_train, y_train)
 
@@ -108,10 +106,16 @@ def ml_training(X_train, y_train, X_test, y_test, res_index):
         pred_row = new_row.copy()
         pred_row["target"] = y_test
         pred_row["pred"] = pd.DataFrame(pred_test)
-        trm.pred = pd.concat([trm.pred, pd.DataFrame([pred_row])], ignore_index=True, axis=0) # pred update
+        pred = pd.concat([pred, pd.DataFrame([pred_row])], ignore_index=True, axis=0) # pred update
 
         # evaluation metrics
 
         print("\n", new_row["model"], "RESULTS:\n")
-        trm.res = eval.evalmetrics(trm.res, y_test, pred_class_test, m.classes_, new_row)
+        res = eval.evalmetrics(y_test = y_test,
+                               pred_test = pred_class_test,
+                               res = res,
+                               labels = m.classes_,
+                               new_row = new_row,
+                               update_res = True)
 
+    return res

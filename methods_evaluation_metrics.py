@@ -9,13 +9,15 @@ import math
 from sklearn.metrics import accuracy_score, recall_score, precision_score, fbeta_score, confusion_matrix, classification_report
 
 
-def evalmetrics(res, y_test, pred_test, labels, new_row):
+def evalmetrics(y_test, pred_test, res, labels, new_row, update_res=False):
+
     """
     Given a dataset "res" to store the metrics in, a dataset "y_test" with the
     target labels, a dataset "pred_test" with the predicted labels, a list "labels"
     of the unique values of the labels and a dictionary "new_row" with all the
     information to update "res", it returns the dataset "res" updated.
     """
+
 
     # accuracy
     accuracy = accuracy_score(y_test, pred_test)
@@ -38,8 +40,8 @@ def evalmetrics(res, y_test, pred_test, labels, new_row):
     TNR = TN / (TN + FP)
 
     # evaluation metrics
-    report = classification_report(y_test, pred_test, output_dict=True, zero_division=0)
-    print(pd.DataFrame(report).transpose().round(decimals=3))
+    #report = classification_report(y_test, pred_test, output_dict=True, zero_division=0)
+    #print(pd.DataFrame(report).transpose().round(decimals=3))
 
     new_row.update({'accuracy': accuracy * 100,
                     'precision': precision * 100,
@@ -47,12 +49,24 @@ def evalmetrics(res, y_test, pred_test, labels, new_row):
                     'true_negative_rate': TNR[1] * 100,
                     'f2_score': f2 * 100,
                     'f3_score': f3 * 100})
-    res = pd.concat([res, pd.DataFrame([new_row])], ignore_index=True, axis=0) #res update
+    if update_res:
+        res = pd.concat([res, pd.DataFrame([new_row])], ignore_index=True, axis=0) #res update
+        return res
+    else:
+        return new_row
 
-    return res
+def update_avg_res(res, avg_res, condition, new_condition):
+    for column in res.columns[res.columns.get_loc("accuracy"):]:  # every column from accuracy column
 
+        avg_column = column + "_avg"
+        std_column = column + "_std"
 
-def compute_avg_std(res):
+        avg_res.loc[new_condition, avg_column] = round(res.loc[condition, column].mean(), 2)
+        avg_res.loc[new_condition, std_column] = round(res.loc[condition, column].std(), 2)
+
+    return avg_res
+
+def compute_avg_std(res, approach):
     """
     Given a dataset "res" that stores the metrics, it returns the avg and std for
     every metics stored in "res".
@@ -60,21 +74,32 @@ def compute_avg_std(res):
 
     avg_res = pd.DataFrame()
 
-    for k in res["df"].unique():
-        for j in res["model"].unique():
-            condition = (res["df"] == k) & (res["model"] == j)
+    if approach == 1:
+        for k in res["df"].unique():
+            for j in res["model"].unique():
+                condition = (res["df"] == k) & (res["model"] == j)
 
-            new_row = {"df": k, "model": j}
-            avg_res = pd.concat([avg_res, pd.DataFrame([new_row])], ignore_index=True, axis=0)  #avg_res update
-            new_condition = (avg_res["df"] == k) & (avg_res["model"] == j)
+                new_row = {"df": k, "model": j}
+                avg_res = pd.concat([avg_res, pd.DataFrame([new_row])], ignore_index=True, axis=0)  #avg_res update
+                new_condition = (avg_res["df"] == k) & (avg_res["model"] == j)
 
-            for column in res.columns[res.columns.get_loc("accuracy"):]:  # every column from accuracy column
+                avg_res = update_avg_res(res = res,
+                                         avg_res = avg_res,
+                                         condition = condition,
+                                         new_condition = new_condition)
 
-                avg_column = column + "_avg"
-                std_column = column + "_std"
 
-                avg_res.loc[new_condition, avg_column] = round(res.loc[condition, column].mean(), 2)
-                avg_res.loc[new_condition, std_column] = round(res.loc[condition, column].std(), 2)
+    elif approach == 2:
+        for k in res["df"].unique():
+            for j in res["model"].unique():
+                for h in res["set"].unique():
+                    condition = (res["df"] == k) & (res["model"] == j) & (res["set"] == h)
+
+                    new_row = {"df": k, "model": j, "set" : h}
+                    avg_res = pd.concat([avg_res, pd.DataFrame([new_row])], ignore_index=True, axis=0)  # avg_res update
+                    new_condition = (avg_res["df"] == k) & (avg_res["model"] == j) & (avg_res["set"] == h)
+
+                    avg_res = update_avg_res(res, avg_res, condition, new_condition)
 
     return avg_res
 
@@ -86,11 +111,11 @@ def sigmoid(x):
     return 1 / (1 + math.exp(-x))
 
 
-def arrange_predictions_and_targets(pred, j):
+def arrange_predictions_and_targets(pred, target):
     # create dataframe that contain predictions and targets
     temp = pd.DataFrame()
-    temp["prediction_value"] = pred["pred"][j]
-    temp["target"] = pred["target"].values.tolist()[j]
+    temp["prediction_value"] = pred
+    temp["target"] = target
 
     # sort in descending order respect to the predictions
     temp.sort_values(by=['prediction_value'], inplace=True, ascending=False, ignore_index=True)
@@ -136,7 +161,7 @@ def get_rank_at_k(df, total_relevant_docs, K=95):
     return 0
 
 
-def update_results(pred_df, df, model, avg_res, K=95):
+def update_results(pred_df, df, model, avg_res, approach, set_type=None, K=95):
     # compute TP, TN, FP, FN
     TP, TN, FP, FN = getTpTnFpFn(pred_df)
     retrieved_docs = TP + FP
@@ -171,7 +196,10 @@ def update_results(pred_df, df, model, avg_res, K=95):
     WSS_k = ((N - last_positive_rank) / N) - ((100 - K) / 100)
 
     # update results dataset
-    condition = (avg_res["df"] == df) & (avg_res["model"] == model)
+    if approach == 1:
+        condition = (avg_res["df"] == df) & (avg_res["model"] == model)
+    elif approach == 2:
+        condition = avg_res["set"] == set_type
     avg_res.loc[condition, "true_negative_rate@95"] = round(TNR_k * 100, 2)
     avg_res.loc[condition, "precision@95"] = round(precision_k * 100, 2)
     avg_res.loc[condition, "wss@95"] = round(WSS_k * 100, 2)
