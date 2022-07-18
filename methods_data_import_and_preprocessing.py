@@ -84,7 +84,7 @@ def clean_text(df, col):
 """### Features preprocessing"""
 
 
-def from_list_of_values_to_columns(col, df, print=False):
+def from_list_of_values_to_columns(col, df, nolist=False, print=False):
     """
     Given a column name "col" and a dataset "df",
     it converts a column containing lists of values to a binary column for each value.
@@ -92,8 +92,11 @@ def from_list_of_values_to_columns(col, df, print=False):
     df = df.copy()
 
     # obtaining the unique values
-
-    df[col] = df[col].apply(eval)
+    if nolist == True:
+        for index, content in enumerate(df[col]):
+            df.loc[index, col] = [content]
+    else:
+        df[col] = df[col].apply(eval)
 
     col_dict = {}
     for i in df[col]:  # obtain value_count in a dictionary

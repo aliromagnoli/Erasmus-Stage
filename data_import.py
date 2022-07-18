@@ -14,7 +14,7 @@ Datasets are imported from: https://www.dropbox.com/sh/ud5sf1fy6m7o219/AAD9pkY5g
 # Commented out IPython magic to ensure Python compatibility.
 #libraries
 # %cd "/content/gdrive/MyDrive/Magistrale/Stage/file"
-import methods_data_import_and_preprocessing
+import methods_data_import_and_preprocessing as pr
 import os
 import numpy as np
 import pandas as pd
@@ -44,14 +44,14 @@ print(dataset["ace"].columns)
 
 #value counts
 variables = ["MH", "STAT", "VI", "IP", "DP", "FAU", "AU", "AD", "LA", "PT", "PL", "TA", "JT"]
-methods_data_import_and_preprocessing.print_value_counts(l=variables, df=dataset["ace"])
+pr.print_value_counts(l=variables, df=dataset["ace"])
 
 #target distribution
-methods_data_import_and_preprocessing.print_value_counts(["Label"], dataset["ace"])
+pr.print_value_counts(["Label"], dataset["ace"])
 
 #renaming columns
 names = {"DP" : "publication_date", "FAU" : "full_authors", "PT" : "publication_type", "PL" : "publication_place", "TA" : "journal_title_abbreviation", "MH" : "mesh_terms", "Label" : "label"}
-methods_data_import_and_preprocessing.rename_columns(names=names, df=dataset["ace"])
+pr.rename_columns(names=names, df=dataset["ace"])
 
 #column selection
 selected_columns = ["publication_date", "full_authors", "publication_type", "publication_place", "journal_title_abbreviation", "Title", "Abstract", "mesh_terms", "label"]
@@ -69,8 +69,8 @@ print(all(dataset["copd"]["Title"] == dataset["copd"]["Abstract"]))
 dataset["copd"].drop('Title', inplace=True, axis=1) #drop Title
 
 #target distribution
-methods_data_import_and_preprocessing.print_value_counts(["Label"], dataset["copd"])
-methods_data_import_and_preprocessing.rename_columns(names={"Label" : "label"}, df=dataset["copd"])
+pr.print_value_counts(["Label"], dataset["copd"])
+pr.rename_columns(names={"Label" : "label"}, df=dataset["copd"])
 
 """### Proton Pump Inhibitors dataset"""
 
@@ -85,16 +85,50 @@ display(dataset["ppi"].head(3))
 print(dataset["ppi"].columns)
 
 #value counts
-methods_data_import_and_preprocessing.print_value_counts(l=variables, df=dataset["ppi"])
+pr.print_value_counts(l=variables, df=dataset["ppi"])
 
 #target distribution
-methods_data_import_and_preprocessing.print_value_counts(["Label"], dataset["ppi"])
+pr.print_value_counts(["Label"], dataset["ppi"])
 
 #renaming columns
-methods_data_import_and_preprocessing.rename_columns(names=names, df=dataset["ppi"])
+pr.rename_columns(names=names, df=dataset["ppi"])
 
 #column selection
 dataset["ppi"] = dataset["ppi"][selected_columns]
+
+"""### Alhammad Inhibitors dataset"""
+
+#import of data
+df0 = pd.read_csv(path + "/alhammad-2018-excluded.csv")
+df0["label"] = 0
+df1 = pd.read_csv(path + "/alhammad-2018-included.csv")
+df1["label"] = 1
+dataset["alhammad"] = pd.concat([df0, df1], axis=0, ignore_index=True)
+
+print(dataset["alhammad"].shape)
+pd.set_option('display.max_columns', None)
+display(dataset["alhammad"].head(3))
+
+"""#### Columns distribution and selection"""
+
+#columns
+print(dataset["alhammad"].columns)
+
+#value counts
+variables = ["Publication year", "Authors", "Item type", "Journal", "Keywords"]
+pr.print_value_counts(l=variables, df=dataset["alhammad"])
+
+#target distribution
+pr.print_value_counts(["label"], dataset["alhammad"])
+
+#renaming columns
+names = {"Publication year" : "publication_date", "Authors" : "full_authors", "Item type" : "publication_type", "Keywords" : "mesh_terms"}
+pr.rename_columns(names=names, df=dataset["alhammad"])
+
+#column selection
+selected_columns2 = ["publication_date", "full_authors", "publication_type", "Title", "Abstract", "mesh_terms", "label"]
+dataset["alhammad"] = dataset["alhammad"][selected_columns2]
+
 
 """## Columns preprocessing
 
@@ -116,21 +150,23 @@ for i in dataset:
     dataset[i]["mesh_terms"] = dataset[i]["mesh_terms"].replace(np.NaN, "[]")
 
     #from list of strings to string
-    for index, value in enumerate(dataset[i]["mesh_terms"]):
-      dataset[i].loc[index, "mesh_terms"] = methods_data_import_and_preprocessing.listToString(eval(value))
+    if i != "alhammad": #in alhammad they are already strings
+      for index, value in enumerate(dataset[i]["mesh_terms"]):
+        dataset[i].loc[index, "mesh_terms"] = pr.listToString(eval(value))
 
     dataset[i]['mesh_terms'] = dataset[i]['mesh_terms'].str.replace('[/*]',' ', regex=True)
-    dataset[i] = methods_data_import_and_preprocessing.count_words(dataset[i], "mesh_terms")
+    dataset[i]['mesh_terms'] = dataset[i]['mesh_terms'].str.replace(';', ', ')
+    dataset[i] = pr.count_words(dataset[i], "mesh_terms")
 
   ## Variables Title ad Abstract
 
   #count number of words in Title
-    dataset[i] = methods_data_import_and_preprocessing.count_words(dataset[i], "Title")
+    dataset[i] = pr.count_words(dataset[i], "Title")
 
   #count number of words in Abstract
   dataset[i]["Abstract"] = dataset[i]["Abstract"].replace(np.NaN, "[]") #replace missing values with empty list
   dataset[i]["Abstract"] = dataset[i]["Abstract"].astype(str)
-  dataset[i] = methods_data_import_and_preprocessing.count_words(dataset[i], "Abstract")
+  dataset[i] = pr.count_words(dataset[i], "Abstract")
 
   #checking missing values
   print("Dataset", i, "shape:", dataset[i].shape)
@@ -147,8 +183,8 @@ for i in dataset:
   ## Variable text_clean
 
   #text preprocessing
-  dataset[i]['text_clean'] = methods_data_import_and_preprocessing.clean_text(dataset[i], 'text')
-  dataset[i] = methods_data_import_and_preprocessing.count_words(dataset[i], "text_clean")
+  dataset[i]['text_clean'] = pr.clean_text(dataset[i], 'text')
+  dataset[i] = pr.count_words(dataset[i], "text_clean")
 
   #removing Nan and checking missing values again
   #print("Missing values after creating \"text\":")
@@ -160,7 +196,7 @@ for i in dataset:
 """### Features preprocessing"""
 
 #creating col_names (used to store columns' names)
-col_names = pd.DataFrame(columns = ["feature", "ace", "copd", "ppi"])
+col_names = pd.DataFrame(columns = ["feature", "ace", "copd", "ppi", "alhammad"])
 new_features = ["contains_topic","contains_other_topic","n_words_in_mesh_terms",
                         "n_words_in_Title","n_words_in_Abstract","n_words_in_text_clean"]
 selected_columns.extend(new_features)
@@ -174,23 +210,24 @@ for i in dataset:
 
     #removing the day and maintaining only year and month
     for index, content in enumerate(dataset[i]["publication_date"]):
-      if len(nltk.word_tokenize(content)) > 2:
-        dataset[i].loc[index, "publication_date"] = " ".join(nltk.word_tokenize(content)[0:2])
+      if len(nltk.word_tokenize(str(content))) > 2:
+        dataset[i].loc[index, "publication_date"] = " ".join(nltk.word_tokenize(str(content))[0:2])
     #print(dataset[i]["publication_date"].value_counts(), "\n")
 
 
     ## Variable publication_type
-
-    temp = methods_data_import_and_preprocessing.from_list_of_values_to_columns("publication_type", dataset[i])
-    col_names = methods_data_import_and_preprocessing.update_col_names(col_names, "publication_type", i, list(temp.columns))
+    nolist = False
+    if i == "alhammad":
+      nolist = True
+    temp = pr.from_list_of_values_to_columns("publication_type", dataset[i], nolist=nolist)
+    col_names = pr.update_col_names(col_names, "publication_type", i, list(temp.columns))
     dataset[i].drop("publication_type", inplace=True, axis=1)
     dataset[i] = dataset[i].join(temp)
 
 
     ## Variable full_authors
-
-    temp = methods_data_import_and_preprocessing.from_list_of_values_to_columns("full_authors", dataset[i])
-    col_names = methods_data_import_and_preprocessing.update_col_names(col_names, "full_authors", i, list(temp.columns))
+    temp = pr.from_list_of_values_to_columns("full_authors", dataset[i], nolist=nolist)
+    col_names = pr.update_col_names(col_names, "full_authors", i, list(temp.columns))
     dataset[i].drop("full_authors", inplace=True, axis=1)
     dataset[i] = dataset[i].join(temp)
 
@@ -204,8 +241,8 @@ list2 = ["alacepril", "captopril", "zofenopril", "enalapril", "ramipril",
           "quinapril", "perindopril", "lisinopril", "benazepril", "imidapril",
           "trandolapril", "cilazapril", "fosinopril", "moexipril"]
 
-dataset["ace"] = methods_data_import_and_preprocessing.find_documents_about_topic(dataset["ace"], "text_clean", "contains_topic", list1)
-dataset["ace"] = methods_data_import_and_preprocessing.find_documents_about_topic(dataset["ace"], "text_clean", "contains_other_topic", list2)
+dataset["ace"] = pr.find_documents_about_topic(dataset["ace"], "text_clean", "contains_topic", list1)
+dataset["ace"] = pr.find_documents_about_topic(dataset["ace"], "text_clean", "contains_other_topic", list2)
 
 print("Checking how many documents don't contain any of the searched words:\n")
 print(dataset["ace"][["contains_topic", "contains_other_topic"]].eq(0).all(1).value_counts(), "\n")
@@ -217,8 +254,8 @@ print("False -> they contain at list one word")
 list1 = ["chronic obstructive pulmonary disease", "copd"]
 list2 = ["chronic obstructive lung disease", "cold", "chronic obstructive airway disease", "coad"]
 
-dataset["copd"] = methods_data_import_and_preprocessing.find_documents_about_topic(dataset["copd"], "text_clean", "contains_topic", list1)
-dataset["copd"] = methods_data_import_and_preprocessing.find_documents_about_topic(dataset["copd"], "text_clean", "contains_other_topic", list2)
+dataset["copd"] = pr.find_documents_about_topic(dataset["copd"], "text_clean", "contains_topic", list1)
+dataset["copd"] = pr.find_documents_about_topic(dataset["copd"], "text_clean", "contains_other_topic", list2)
 
 print("Checking how many documents don't contain any of the searched words:\n")
 print(dataset["copd"][["contains_topic", "contains_other_topic"]].eq(0).all(1).value_counts(), "\n")
@@ -230,8 +267,8 @@ print("False -> they contain at list one word")
 list1 = ["proton pump inhibitors", "ppi", "ppis"]
 list2 = ["omeprazole", "lansoprazole", "dexlansoprazole", "esomeprazole", "pantoprazole", "rabeprazole", "ilaprazole"]
 
-dataset["ppi"] = methods_data_import_and_preprocessing.find_documents_about_topic(dataset["ppi"], "text_clean", "contains_topic", list1)
-dataset["ppi"] = methods_data_import_and_preprocessing.find_documents_about_topic(dataset["ppi"], "text_clean", "contains_other_topic", list2)
+dataset["ppi"] = pr.find_documents_about_topic(dataset["ppi"], "text_clean", "contains_topic", list1)
+dataset["ppi"] = pr.find_documents_about_topic(dataset["ppi"], "text_clean", "contains_other_topic", list2)
 
 print("Checking how many documents don't contain any of the searched words:\n")
 print(dataset["ppi"][["contains_topic", "contains_other_topic"]].eq(0).all(1).value_counts(), "\n")
@@ -252,11 +289,15 @@ for j in new_features:
 #one hot encode for categorical variables
 
 enc = OneHotEncoder()
-cat_features = ['publication_date','publication_place','journal_title_abbreviation'] #categorical features
 
 for i in dataset:
 
   if i != "copd": #doesn't have any categorical variable
+
+    if i == "alhammad":
+      cat_features = ['publication_date']
+    else:
+      cat_features = ['publication_date', 'publication_place', 'journal_title_abbreviation']  # categorical features
 
     enc_df = pd.DataFrame(enc.fit_transform(dataset[i][cat_features]).toarray()) #one hot encode df for categorical features
     enc_df.columns = enc.get_feature_names_out(cat_features) #renaming columns of enc_df
@@ -267,7 +308,7 @@ for i in dataset:
 
     #updating col_names
     for j in cat_features:
-      methods_data_import_and_preprocessing.update_col_names(col_names, j, i, [x for x in enc_df.columns if x.startswith(j)])
+      pr.update_col_names(col_names, j, i, [x for x in enc_df.columns if x.startswith(j)])
 
   dataset[i] = dataset[i].drop("index", axis=1)
   print("Final", i, "shape:", dataset[i].shape, "\n")
