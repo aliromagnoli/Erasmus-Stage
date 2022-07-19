@@ -11,9 +11,8 @@ Datasets are imported from: https://www.dropbox.com/sh/ud5sf1fy6m7o219/AAD9pkY5g
 ## Libraries and methods
 """
 
-# Commented out IPython magic to ensure Python compatibility.
+
 #libraries
-# %cd "/content/gdrive/MyDrive/Magistrale/Stage/file"
 import methods_data_import_and_preprocessing as pr
 import os
 import numpy as np
@@ -96,7 +95,7 @@ pr.rename_columns(names=names, df=dataset["ppi"])
 #column selection
 dataset["ppi"] = dataset["ppi"][selected_columns]
 
-"""### Alhammad Inhibitors dataset"""
+"""### Alhammad 2018 dataset"""
 
 #import of data
 df0 = pd.read_csv(path + "/alhammad-2018-excluded.csv")
@@ -129,6 +128,37 @@ pr.rename_columns(names=names, df=dataset["alhammad"])
 selected_columns2 = ["publication_date", "full_authors", "publication_type", "Title", "Abstract", "mesh_terms", "label"]
 dataset["alhammad"] = dataset["alhammad"][selected_columns2]
 
+"""### Ghasemi 2019 dataset"""
+
+#import of data
+df0 = pd.read_csv(path + "/ghasemi-2019-excluded.csv")
+df0["label"] = 0
+df1 = pd.read_csv(path + "/ghasemi-2019-included.csv")
+df1["label"] = 1
+dataset["ghasemi"] = pd.concat([df0, df1], axis=0, ignore_index=True)
+
+print(dataset["ghasemi"].shape)
+pd.set_option('display.max_columns', None)
+display(dataset["ghasemi"].head(3))
+
+"""#### Columns distribution and selection"""
+
+#columns
+print(dataset["ghasemi"].columns)
+
+#value counts
+variables = ["Publication year", "Authors", "Item type", "Journal", "Keywords", "Address"]
+pr.print_value_counts(l=variables, df=dataset["ghasemi"])
+
+#target distribution
+pr.print_value_counts(["label"], dataset["ghasemi"])
+
+#renaming columns
+names = {"Publication year" : "publication_date", "Authors" : "full_authors", "Item type" : "publication_type", "Journal" : "journal_title_abbreviation", "Keywords" : "mesh_terms", "Address" : "publication_place"}
+pr.rename_columns(names=names, df=dataset["ghasemi"])
+
+#column selection
+dataset["ghasemi"] = dataset["ghasemi"][selected_columns2]
 
 """## Columns preprocessing
 
@@ -150,7 +180,7 @@ for i in dataset:
     dataset[i]["mesh_terms"] = dataset[i]["mesh_terms"].replace(np.NaN, "[]")
 
     #from list of strings to string
-    if i != "alhammad": #in alhammad they are already strings
+    if i not in ["alhammad", "ghasemi"]: #in alhammad they are already strings
       for index, value in enumerate(dataset[i]["mesh_terms"]):
         dataset[i].loc[index, "mesh_terms"] = pr.listToString(eval(value))
 
@@ -174,7 +204,7 @@ for i in dataset:
 
   #concatenating Title, Abstract (and mesh_terms)
   if i != "copd":
-    dataset[i]['text'] = dataset[i]['Title'] + (dataset[i]['Abstract']).fillna(' ') + (dataset[i]['mesh_terms']).fillna(' ')
+    dataset[i]['text'] = dataset[i]['Title'] + " " + (dataset[i]['Abstract']).fillna(' ') + " " + (dataset[i]['mesh_terms']).fillna(' ')
     dataset[i].drop(['Title', "Abstract", "mesh_terms"], inplace=True, axis=1)
   else:
     dataset[i]['text'] = (dataset[i]['Abstract']).fillna(' ')
@@ -196,11 +226,12 @@ for i in dataset:
 """### Features preprocessing"""
 
 #creating col_names (used to store columns' names)
-col_names = pd.DataFrame(columns = ["feature", "ace", "copd", "ppi", "alhammad"])
+col_names = pd.DataFrame(columns = ["feature", "ace", "copd", "ppi", "alhammad", "ghasemi"])
 new_features = ["contains_topic","contains_other_topic","n_words_in_mesh_terms",
                         "n_words_in_Title","n_words_in_Abstract","n_words_in_text_clean"]
 selected_columns.extend(new_features)
-col_names["feature"] = list(set(selected_columns) - set(['Title','Abstract','mesh_terms','label']))
+col_names["feature"] = list(set(selected_columns) - {'Title', 'Abstract', 'mesh_terms', 'label'})
+print("\n\n", col_names["feature"], "\n\n")
 
 for i in dataset:
 
@@ -217,7 +248,7 @@ for i in dataset:
 
     ## Variable publication_type
     nolist = False
-    if i == "alhammad":
+    if i in ["alhammad", "ghasemi"]:
       nolist = True
     temp = pr.from_list_of_values_to_columns("publication_type", dataset[i], nolist=nolist)
     col_names = pr.update_col_names(col_names, "publication_type", i, list(temp.columns))
@@ -278,7 +309,8 @@ print("False -> they contain at list one word")
 #updating col_names
 for j in new_features:
   for k in dataset:
-    if not (k == "copd" and (j == "n_words_in_Title" or j == "n_words_in_mesh_terms")):
+    if not (((k == "copd") and (j in ["n_words_in_Title", "n_words_in_mesh_terms"])) or
+            ((k in ["alhammad", "ghasemi"]) and (j in ["contains_topic", "contains_other_topic"]))):
       col_names.loc[col_names["feature"]==j, k] = [[j]]
 
 """## Final data preprocessing
@@ -294,7 +326,7 @@ for i in dataset:
 
   if i != "copd": #doesn't have any categorical variable
 
-    if i == "alhammad":
+    if i in ["alhammad", "ghasemi"]:
       cat_features = ['publication_date']
     else:
       cat_features = ['publication_date', 'publication_place', 'journal_title_abbreviation']  # categorical features
@@ -324,6 +356,10 @@ with open(path + "/preprocessed_copd_no_feature_selection.csv", 'w', encoding = 
   dataset["copd"].to_csv(f)
 with open(path + "/preprocessed_ppi_no_feature_selection.csv", 'w', encoding = 'utf-8-sig') as f:
   dataset["ppi"].to_csv(f)
+with open(path + "/preprocessed_alhammad_no_feature_selection.csv", 'w', encoding='utf-8-sig') as f:
+  dataset["alhammad"].to_csv(f)
+with open(path + "/preprocessed_ghasemi_no_feature_selection.csv", 'w', encoding='utf-8-sig') as f:
+  dataset["ghasemi"].to_csv(f)
 with open(path + "/columns_names.csv", 'w', encoding = 'utf-8-sig') as f:
     col_names.to_csv(f)
 
@@ -375,3 +411,7 @@ with open(path + "/preprocessed_copd.csv", 'w', encoding = 'utf-8-sig') as f:
   dataset["copd"].to_csv(f)
 with open(path + "/preprocessed_ppi.csv", 'w', encoding = 'utf-8-sig') as f:
   dataset["ppi"].to_csv(f)
+with open(path + "/preprocessed_alhammad.csv", 'w', encoding = 'utf-8-sig') as f:
+  dataset["alhammad"].to_csv(f)
+with open(path + "/preprocessed_ghasemi.csv", 'w', encoding = 'utf-8-sig') as f:
+  dataset["ghasemi"].to_csv(f)

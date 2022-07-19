@@ -84,7 +84,7 @@ def clean_text(df, col):
 """### Features preprocessing"""
 
 
-def from_list_of_values_to_columns(col, df, nolist=False, print=False):
+def from_list_of_values_to_columns(col, df, nolist=False, print_count=False):
     """
     Given a column name "col" and a dataset "df",
     it converts a column containing lists of values to a binary column for each value.
@@ -92,9 +92,9 @@ def from_list_of_values_to_columns(col, df, nolist=False, print=False):
     df = df.copy()
 
     # obtaining the unique values
-    if nolist == True:
+    if nolist:
         for index, content in enumerate(df[col]):
-            df.loc[index, col] = [content]
+            df.at[index, col] = list(content.split(","))
     else:
         df[col] = df[col].apply(eval)
 
@@ -108,7 +108,7 @@ def from_list_of_values_to_columns(col, df, nolist=False, print=False):
 
     series = pd.Series([x for _list in df[col] for x in _list])  # reducing its dimensions from 2 to 1
 
-    if print == True:
+    if print_count:
         print(series.value_counts())  # display value count
 
     # creating new binary columns
@@ -130,7 +130,8 @@ def update_col_names(col_names, col, name_df, sub_features):
     it update the dataset "col_names" with "sub_features"
     """
 
-    # useful trasnformation for assigning a list to a dataframe cell
+    #col_names = col_names.copy()
+    # useful transformation for assigning a list to a dataframe cell
     l = col_names.index[col_names["feature"] == col].tolist()
     col_names.at[l[0], name_df] = sub_features
 
