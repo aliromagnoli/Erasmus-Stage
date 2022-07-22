@@ -31,12 +31,19 @@ dataset = dict()
 dataset["ace"] = pd.read_csv(path + "\preprocessed_ace.csv", index_col=0)
 dataset["copd"] = pd.read_csv(path + "\preprocessed_copd.csv", index_col=0)
 dataset["ppi"] = pd.read_csv(path + "\preprocessed_ppi.csv", index_col=0)
+dataset["alhammad"] = pd.read_csv(path + "\preprocessed_ace.csv", index_col=0)
+dataset["ghasemi"] = pd.read_csv(path + "\preprocessed_copd.csv", index_col=0)
+dataset["goulao"] = pd.read_csv(path + "\preprocessed_ppi.csv", index_col=0)
+dataset["guinea"] = pd.read_csv(path + "\preprocessed_ace.csv", index_col=0)
+dataset["santos"] = pd.read_csv(path + "\preprocessed_copd.csv", index_col=0)
+dataset["shahin"] = pd.read_csv(path + "\preprocessed_ppi.csv", index_col=0)
+dataset["yang"] = pd.read_csv(path + "\preprocessed_ace.csv", index_col=0)
 
 #random seed for reproducibility
-SEED = [1009, 2839] #, 516, 2383, 273, 1625, 1324, 2791, 7, 1928] #for cross-validation
+SEED = [1009, 2839, 516, 2383, 273, 1625, 1324, 2791, 7, 1928] #for cross-validation
 
 #parameters
-APPROACH = 2
+APPROACH = 1
 CLEAN_TEXT = True
 TRAIN_SIZE = 0.5
 SAMPLING = 1
@@ -107,7 +114,7 @@ for i in dataset:
                                                                              seed = SEED[0])
 
         if APPROACH == 1:
-            res = ml.ml_training(X_train = X_train,
+            res, pred = ml.ml_training(X_train = X_train,
                                  y_train = y_train,
                                  X_test = X_test,
                                  y_test = pd.DataFrame(y_test),

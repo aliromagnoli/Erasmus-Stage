@@ -90,7 +90,7 @@ def ml_training(X_train, y_train, X_test, y_test, pred, res, res_index, seed):
         if model_name == "RF":
             m = models[model_name](class_weight="balanced", random_state=seed, n_estimators=50, max_depth=8)
         elif model_name == "SVM":
-            m = models[model_name](class_weight="balanced", random_state=seed)  # , C=0.5, max_iter=2000)
+            m = models[model_name](class_weight="balanced", random_state=seed, max_iter=1000)
             m = CalibratedClassifierCV(m)
         else:
             m = models[model_name](class_weight="balanced", random_state=seed)
@@ -118,4 +118,4 @@ def ml_training(X_train, y_train, X_test, y_test, pred, res, res_index, seed):
                                new_row = new_row,
                                update_res = True)
 
-    return res
+    return res, pred
