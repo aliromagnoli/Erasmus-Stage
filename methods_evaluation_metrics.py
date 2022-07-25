@@ -120,16 +120,9 @@ def arrange_predictions_and_targets(pred, target):
     # sort in descending order respect to the predictions
     temp.sort_values(by=['prediction_value'], inplace=True, ascending=False, ignore_index=True)
 
-    # compute the sigmoid function over the predictions (in order to obtain values in [0, 1])
-    #for index, value in enumerate(temp["prediction_value"]):
-    #    temp.loc[index, "sigmoid_value"] = sigmoid(value)
-
     # convert predictions from real value to 0 or 1
-    #temp.loc[temp["sigmoid_value"] >= 0.5, "prediction"] = 1
-    #temp.loc[temp["sigmoid_value"] < 0.5, "prediction"] = 0
     temp.loc[temp["prediction_value"] >= 0.5, "prediction"] = 1
     temp.loc[temp["prediction_value"] < 0.5, "prediction"] = 0
-    #temp.drop(['prediction_value', "sigmoid_value"], inplace=True, axis=1)
     temp.drop('prediction_value', inplace=True, axis=1)
 
     # cast dataframe type to int
@@ -194,7 +187,7 @@ def update_results(pred_df, df, model, avg_res, approach, set_type=None, K=95):
     else:
         precision_k = TP_95 / retrieved_docs
 
-        # WSS@95
+    # WSS@95
     N = len(pred_df)
     WSS_k = ((N - last_positive_rank) / N) - ((100 - K) / 100)
 

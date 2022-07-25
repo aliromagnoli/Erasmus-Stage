@@ -103,7 +103,7 @@ df1 = pd.read_csv(path + "/alhammad-2018-included.csv")
 df1["label"] = 1
 dataset["alhammad"] = pd.concat([df0, df1], axis=0, ignore_index=True)
 
-print(dataset["alhammad"].shape)
+print("Alhammad dataset shape:", dataset["alhammad"].shape)
 display(dataset["alhammad"].head(3))
 
 """#### Columns distribution and selection"""
@@ -136,7 +136,7 @@ df1 = pd.read_csv(path + "/ghasemi-2019-included.csv")
 df1["label"] = 1
 dataset["ghasemi"] = pd.concat([df0, df1], axis=0, ignore_index=True)
 
-print(dataset["ghasemi"].shape)
+print("Ghasemi dataset shape:", dataset["ghasemi"].shape)
 display(dataset["ghasemi"].head(3))
 
 """#### Columns distribution and selection"""
@@ -167,7 +167,7 @@ df1 = pd.read_csv(path + "/goulao-2016-included.csv")
 df1["label"] = 1
 dataset["goulao"] = pd.concat([df0, df1], axis=0, ignore_index=True)
 
-print(dataset["goulao"].shape)
+print("Goulao dataset shape:", dataset["goulao"].shape)
 display(dataset["goulao"].head(3))
 
 """#### Columns distribution and selection"""
@@ -197,7 +197,7 @@ df1 = pd.read_csv(path + "/guinea-2016-included.csv")
 df1["label"] = 1
 dataset["guinea"] = pd.concat([df0, df1], axis=0, ignore_index=True)
 
-print(dataset["guinea"].shape)
+print("Guinea dataset shape:", dataset["guinea"].shape)
 display(dataset["guinea"].head(3))
 
 """#### Columns distribution and selection"""
@@ -227,7 +227,7 @@ df1 = pd.read_csv(path + "/santos-2018-included.csv")
 df1["label"] = 1
 dataset["santos"] = pd.concat([df0, df1], axis=0, ignore_index=True)
 
-print(dataset["santos"].shape)
+print("Santos dataset shape:", dataset["santos"].shape)
 display(dataset["santos"].head(3))
 
 """#### Columns distribution and selection"""
@@ -257,7 +257,7 @@ df1 = pd.read_csv(path + "/shahin-2017-included.csv")
 df1["label"] = 1
 dataset["shahin"] = pd.concat([df0, df1], axis=0, ignore_index=True)
 
-print(dataset["shahin"].shape)
+print("Shahin dataset shape:", dataset["shahin"].shape)
 display(dataset["shahin"].head(3))
 
 """#### Columns distribution and selection"""
@@ -287,7 +287,7 @@ df1 = pd.read_csv(path + "/yang-2016-included.csv")
 df1["label"] = 1
 dataset["yang"] = pd.concat([df0, df1], axis=0, ignore_index=True)
 
-print(dataset["yang"].shape)
+print("Yang dataset shape:", dataset["yang"].shape)
 display(dataset["yang"].head(3))
 
 """#### Columns distribution and selection"""
