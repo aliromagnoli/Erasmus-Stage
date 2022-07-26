@@ -1,0 +1,40 @@
+{
+    "title" : "Gamification in software engineering education: A systematic mapping", 
+    "abstract" : "The potential of gamification in education is based on the hypothesis that it supports and motivates students and can thus lead to enhanced learning processes and outcomes. Gamification in software engineering (SE) education is in its infancy. However, as SE educators we are particularly interested in understanding how gamification is pollinating our field and the extent to which the above claim is valid in our context. A systematic literature mapping has underscored the difficulty in fully corroborating the above claim because few empirical data are available so far. However, key trends and challenges have been identified. We found that the purpose of applying gamification in the SE field is mostly directly related to improving student engagement and, to a lesser extent, to improving student knowledge, although other targets are the application of SE best practices and socialization. We have also discussed insightful issues regarding the implementation cost of gamification, patterns in the most often used gamification elements, and the SE processes and teaching activities addressed. Of the identified challenges, we should highlight the complexity of deciding which gamification approach to follow, the lack of information for choosing gamification elements and the need to control the impact of gamification.", 
+    "research question" : {
+        "rq1" : {
+            "generic" : "In which context of SE education has gamification been applied?", 
+            "specific1" : "What types of SE course have been gamified?", 
+            "specific2" : "Which educational activities have been gamified?", 
+            "specific3" : "Which software engineering processes have been gamified in education?"
+        },
+        "rq2" : {
+            "generic" : "How has gamification been implemented in SE educational courses?", 
+            "specific1" : "What processes or approaches, if any, have been followed to incorporate gamification in SE education?", 
+            "specific2" : "What gamification elements/components have been used?", 
+            "specific3" : "What kind of tools/instruments have been used to implement the gamified solution?"
+        }, 
+        "rq3" : {
+            "generic" : "What is the evidential impact of gamification on SE education?"
+        }
+    }, 
+    "criteria" : {
+        "inclusion" : {
+            "ic1" : "The paper deals with gamification.", 
+            "ic2" : "The paper deals with SE education."
+        }, 
+        "exclusion" : {
+            "ec1" : "The paper gamify SE rather than SE education.", 
+            "ec2" : "The paper gamify courses not related to ISO SE processes.", 
+            "ec3" : "The paper deals with serious games.", 
+            "ec4" : "The paper deals with game-based learning.", 
+            "ec5" : "The paper does not explicitly use gamification.", 
+            "ec6" : "The paper's full-text is not accessible.", 
+            "ec7" : "The paper is not written in English.", 
+            "ec8" : "The paper is a summary of other studies.", 
+            "ec9" : "The paper is a panel study.", 
+            "ec10" : "The paper is a summary of a conference."
+        }
+    }, 
+    "research query" : "(gamification OR gamified OR gamify OR gamifying) AND (\"software engineering\" OR \"software design\" OR \"software process\" OR \"software requirements\" OR \"software testing\" OR \"software risk\" OR \"software integration\" OR \"software construction\" OR \"software implementation\" OR \"software verification\" OR \"software validation\" OR \"software metrics\" OR \"software maintenance\" OR \"software configuration\" OR \"project planning\" OR \"project assessment\") AND (education OR educational OR course OR teaching OR learning OR training OR curriculum OR curricula OR syllabus OR syllabi)"
+}
