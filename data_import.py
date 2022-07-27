@@ -423,26 +423,14 @@ list2 = ["alacepril", "captopril", "zofenopril", "enalapril", "ramipril",
           "quinapril", "perindopril", "lisinopril", "benazepril", "imidapril",
           "trandolapril", "cilazapril", "fosinopril", "moexipril"]
 
-dataset["ace"] = pr.find_documents_about_topic(dataset["ace"], "text_clean", "contains_topic", list1)
-dataset["ace"] = pr.find_documents_about_topic(dataset["ace"], "text_clean", "contains_other_topic", list2)
-
-print("Checking how many documents don't contain any of the searched words:\n")
-print(dataset["ace"][["contains_topic", "contains_other_topic"]].eq(0).all(1).value_counts(), "\n")
-print("True -> they don't contain any of the words")
-print("False -> they contain at list one word")
+dataset["ace"] = pr.topic_search(dataset["ace"], list1, list2, text_clean=True)
 
 """### COPD related documents"""
 
 list1 = ["chronic obstructive pulmonary disease", "copd"]
 list2 = ["chronic obstructive lung disease", "cold", "chronic obstructive airway disease", "coad"]
 
-dataset["copd"] = pr.find_documents_about_topic(dataset["copd"], "text_clean", "contains_topic", list1)
-dataset["copd"] = pr.find_documents_about_topic(dataset["copd"], "text_clean", "contains_other_topic", list2)
-
-print("Checking how many documents don't contain any of the searched words:\n")
-print(dataset["copd"][["contains_topic", "contains_other_topic"]].eq(0).all(1).value_counts(), "\n")
-print("True -> they don't contain any of the words")
-print("False -> they contain at list one word")
+dataset["copd"] = pr.topic_search(dataset["copd"], list1, list2, text_clean=True)
 
 """### PPI related documents"""
 
@@ -452,16 +440,61 @@ list2 = ["omeprazole", "lansoprazole", "dexlansoprazole", "esomeprazole", "panto
 dataset["ppi"] = pr.find_documents_about_topic(dataset["ppi"], "text_clean", "contains_topic", list1)
 dataset["ppi"] = pr.find_documents_about_topic(dataset["ppi"], "text_clean", "contains_other_topic", list2)
 
-print("Checking how many documents don't contain any of the searched words:\n")
-print(dataset["ppi"][["contains_topic", "contains_other_topic"]].eq(0).all(1).value_counts(), "\n")
-print("True -> they don't contain any of the words")
-print("False -> they contain at list one word")
+dataset["ppi"] = pr.topic_search(dataset["ppi"], list1, list2, text_clean=True)
+
+"""### Alhammad 2018 related documents"""
+
+list1 = ["gamification", "gamified", "gamify", "gamifying"]
+list2 = ["software engineering", "software design", "SE", "education", "educational"]
+
+dataset["alhammad"] = pr.topic_search(dataset["alhammad"], list1, list2, text_clean=True)
+
+"""### Ghasemi 2019 related documents"""
+
+list1 = ["goal-oriented", "goal modelling", "goal model", "goal mining"]
+list2 = ["process mining", "process discovery", "conformance checking", "event log"]
+
+dataset["ghasemi"] = pr.topic_search(dataset["ghasemi"], list1, list2, text_clean=True)
+
+"""### Goulao 2016 related documents"""
+
+list1 = ["model driven", "mde", "mdd"]
+list2 = ["model driven engineering", "model-driven engineering", "model-driven"]
+
+dataset["goulao"] = pr.topic_search(dataset["goulao"], list1, list2, text_clean=True)
+
+"""### Guinea 2016 related documents"""
+
+list1 = ["ubiquitous system", "pervasive system", "cyber physical system", "ambient intelligence", "smart building", "smart home", "home automation"]
+list2 = ["software", "engineering", "software engineering"]
+
+dataset["guinea"] = pr.topic_search(dataset["guinea"], list1, list2, text_clean=True)
+
+"""### Santos 2018 related documents"""
+
+list1 = ["smell ", "design flaw", "disharmony", "code anomaly", "design anomaly", "anti pattern"]
+list2 = ["experiment", "empirical", "survey", "ethnography", "action research", "exploratory analysis", "study", "controlled"]
+
+dataset["santos"] = pr.topic_search(dataset["santos"], list1, list2, text_clean=True)
+
+"""### Shahin 2017 related documents"""
+
+list1 = ["continuous integratio ", "continuous delivery", "continuous deployment", "continuous release", "continuous build"]
+list2 = ["software", "information system", "information technology", "cloud", "service engineering"]
+
+dataset["shahin"] = pr.topic_search(dataset["shahin"], list1, list2, text_clean=True)
+
+"""### Yang 2016 related documents"""
+
+list1 = ["agile ", "agility", "extreme programming", "xp", "feature driven development", "fdd", "scrum", "crystal", "pair programming"]
+list2 = ["architecture", "architectural", "architecting"]
+
+dataset["yang"] = pr.topic_search(dataset["yang"], list1, list2, text_clean=True)
 
 #updating col_names
 for j in new_features:
   for k in dataset:
-    if not (((k == "copd") and (j in ["n_words_in_Title", "n_words_in_mesh_terms"])) or
-            ((k in new_datasets) and (j in ["contains_topic", "contains_other_topic"]))):
+    if not ((k == "copd") and (j in ["n_words_in_Title", "n_words_in_mesh_terms"])):
       col_names.loc[col_names["feature"]==j, k] = [[j]]
 
 """## Final data preprocessing

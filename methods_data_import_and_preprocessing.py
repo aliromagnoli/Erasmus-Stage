@@ -156,6 +156,26 @@ def find_documents_about_topic(df, column, new_column, l):
 
     return df
 
+def topic_search(df, l1, l2, text_clean=True):
+    """
+    Given a dataset "df" and two lists of strings "l1" and "l2",
+    it perform the steps to modifies "df" adding a binary column that specify for every row if "column" contains at least 1 of the strings in "l".
+    """
+    df = find_documents_about_topic(df, "text_clean", "contains_topic", l1)
+    df = find_documents_about_topic(df, "text_clean", "contains_other_topic", l2)
+
+    print("\nChecking how many documents don't contain any of the searched words:\n")
+    print(df[["contains_topic", "contains_other_topic"]].eq(0).all(1).value_counts(), "\n")
+    print("True -> they don't contain any of the words")
+    print("False -> they contain at list one word")
+
+    print("\nChecking how many documents contain at least one word from each list:\n")
+    print(df[["contains_topic", "contains_other_topic"]].eq(1).all(1).value_counts(), "\n")
+    print("True -> they contain words from both lists")
+    print("False -> they don't contain words from both lists\n")
+
+    return df
+
 """## Final preprocessing"""
 
 def oversampling(X_train, y_train, sampling, seed):
