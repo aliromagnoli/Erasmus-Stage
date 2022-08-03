@@ -167,7 +167,7 @@ def topic_search(df, l1, l2, text_clean=True):
     print("\nChecking how many documents don't contain any of the searched words:\n")
     print(df[["contains_topic", "contains_other_topic"]].eq(0).all(1).value_counts(), "\n")
     print("True -> they don't contain any of the words")
-    print("False -> they contain at list one word")
+    print("False -> they contain at least one word")
 
     print("\nChecking how many documents contain at least one word from each list:\n")
     print(df[["contains_topic", "contains_other_topic"]].eq(1).all(1).value_counts(), "\n")
@@ -185,5 +185,7 @@ def oversampling(X_train, y_train, sampling, seed):
     # resampling X, y
     X_train, y_train = ros.fit_resample(X_train, y_train)
     return X_train, y_train
+
+
 
 
