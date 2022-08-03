@@ -22,13 +22,12 @@ from sklearn.model_selection import train_test_split
 import random
 import spacy
 spacy.cli.download("en_core_web_sm")
-import datasets
 
 """## Data preparation"""
 
 #import of the preprocessed datasets
-path = os.getcwd() + "\datasets\preprocessed datasets"
-dataset_list = ["ace"] #, "copd", "ppi", "alhammad", "ghasemi", "goulao", "guinea", "santos", "shahin", "yang"]
+path = os.getcwd() + "\datasets\preprocessed_datasets"
+dataset_list = ["alhammad"] #"ace", "copd", "ppi", "alhammad", "ghasemi", "goulao", "guinea", "santos", "shahin", "yang"]
 dataset = dict()
 for df in dataset_list:
   dataset[df] = pd.read_csv(path + "/preprocessed_" + df + ".csv", index_col=0)
@@ -57,8 +56,9 @@ test_preds_dict = {} #NN predictions
 
 
 
-
 for i in dataset:
+
+  dataset[i] = dataset[i].loc[:50,:]
 
   print("\nDATASET", i, "\n")
   j = 0 # fold number
@@ -100,10 +100,10 @@ for i in dataset:
                                                                              seed = SEED[0])
 
             elif APPROACH == 3:
-                df = datasets.DatasetDict({
-                    "train": datasets.Dataset.from_pandas(set1, preserve_index=False),
-                    "test": datasets.Dataset.from_pandas(set2, preserve_index=False)})
-                df_encoded = tl.tokenize_whole_df(df = df)
+                df = tl.final_tl_preprocessing(train = set1,
+                                               test = set2,
+                                               sampling = SAMPLING,
+                                               seed = SEED[0])
 
 
         else:
@@ -119,13 +119,14 @@ for i in dataset:
                                                                              sampling = SAMPLING,
                                                                              seed = SEED[0])
             elif APPROACH == 3:
-                df = datasets.DatasetDict({
-                    "train": datasets.Dataset.from_pandas(set2, preserve_index=False),
-                    "test": datasets.Dataset.from_pandas(set1, preserve_index=False)})
-                df_encoded = tl.tokenize_whole_df(df = df)
+                df = tl.final_tl_preprocessing(train=set2,
+                                               test=set1,
+                                               sampling=SAMPLING,
+                                               seed=SEED[0])
 
 
         ### TRAINING
+
         if APPROACH == 1:
             res, pred = ml.ml_training(X_train = X_train,
                                  y_train = y_train,
@@ -148,7 +149,7 @@ for i in dataset:
                            te_pred_dict = test_preds_dict)
 
         elif APPROACH == 3:
-            print()
+            tl.tl_training(df=df)
 
 
 

@@ -8,6 +8,16 @@ import pandas as pd
 import math
 from sklearn.metrics import accuracy_score, recall_score, precision_score, fbeta_score, confusion_matrix, classification_report
 
+def tl_approach_metrics(pred):
+    """
+    :param pred: EvalPrediction object, which is a named tuple with `predictions` and `label_ids` attributes
+    :return:
+    """
+
+    labels = pred.label_ids
+    preds = pred.predictions.argmax(-1)
+    return evalmetrics(y_test=labels, pred_test=preds, res=res, labels=[0,1], new_row=row)
+
 
 def evalmetrics(y_test, pred_test, res, labels, new_row, update_res=False):
 
