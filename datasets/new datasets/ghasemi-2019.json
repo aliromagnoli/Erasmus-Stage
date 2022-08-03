@@ -1,0 +1,24 @@
+{
+    "title" : "From event logs to goals: a systematic literature review of goal-oriented process mining", 
+    "abstract" : "Process mining helps infer valuable insights about business processes using event logs, whereas goal modeling focuses on the representation and analysis of competing goals of stakeholders and systems. Although there are clear benefits in mining the goals of existing processes, goal-oriented approaches that consider logs during model construction are still rare. Process mining techniques, when generalizing large instance-level data into process models, can be considered as a data-driven complement to use case/scenario elicitation. Requirements engineers can exploit process mining techniques to find new system or process requirements in order to align current practices and desired ones. This paper provides a systemic literature review, based on 24 papers rigorously selected from four popular search engines in 2018, to assess the state of goal-oriented process mining. Through two research questions, the review highlights that the use of process mining in association with goals does not yet have a coherent line of research, whereas intention mining (where goal models are mined) shows a meaningful trace of research. Research about performance indicators measuring goals associated with process mining is also sparse. Although the number of publications in process mining and goal modeling is trending up, goal mining and goal-oriented process mining remain modest research areas. Yet, synergetic effects achievable by combining goals and process mining can potentially augment the precision, rationality and interpretability of mined models and eventually improve opportunities to satisfy system stakeholders.", 
+    "research question" : 
+    {
+        "rq1" : {
+            "generic" : "What is the share of goal-oriented approaches in process mining studies?", 
+            "explanation" : "This question aims to determine whether goal-oriented process mining is a mature research field or whether there is currently a gap that exists."
+        },
+        "rq2" : {
+            "generic" : "How are the studies conducted on the joint goal modeling and process mining techniques categorized, and what are the main contributions of the papers in these categories?"
+        }
+    }, 
+    "criteria" : {
+        "exclusion" : {
+            "ec1" : "The paper only cites process mining and goal modeling or their derivatives to acknowledge their existence or to mention them in passing in some examples.", 
+            "ec2" : "The paper is only related to process mining and not to goal modeling.", 
+            "ec3" : "The paper is only related to goal modeling and not to process mining.",  
+            "ec3" : "The paper is neither clearly related to process mining nor to goal modeling.", 
+            "ec4" : "The paper is not written in English."
+        }
+    }, 
+    "research query" : "(goal [Keywords] OR \"goal-oriented\" OR \"Goal modelling\" OR \"Goal modeling\" OR \"Goal model\" OR \"Goal mining\" OR \"Goal monitoring\" OR \"requirements engineering\" OR \"user requirements notation\" OR KAOS OR istar OR \"i-star\" OR \"i star\" OR \"NFR Framework\" OR Tropos OR GRL OR intention OR intentional OR \"performance indicator\" OR KPI) AND (\"Process mining\" OR \"Process discovery\" OR \"conformance checking\" OR \"event log\")"
+}
