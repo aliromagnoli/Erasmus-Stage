@@ -1,0 +1,104 @@
+{
+    "title" : "A systematic mapping study on the combination of software architecture and agile development", 
+    "abstract" : "Context
+    Combining software architecture and agile development has received significant attention in recent years. However, there exists no comprehensive overview of the state of research on the architecture-agility combination.
+    
+    Objective
+    This work aims to analyze the combination of architecture and agile methods for the purpose of exploration and analysis with respect to architecting activities and approaches, agile methods and practices, costs, benefits, challenges, factors, tools, and lessons learned concerning the combination.
+    
+    Method
+    A systematic mapping study (SMS) was conducted, covering the literature on the architecture-agility combination published between February 2001 and January 2014.
+    
+    Results
+    Fifty-four studies were finally included in this SMS. Some of the highlights: (1) a significant difference exists in the proportion of various architecting activities, agile methods, and agile practices employed in the combination. (2) none of the architecting approaches has been widely used in the combination. (3) there is a lack of description and analysis regarding the costs and failure stories of the combination. (4) twenty challenges, twenty-nine factors, and twenty-five lessons learned were identified.
+    
+    Conclusions
+    The results of this SMS help the software engineering community to reflect on the past thirteen years of research and practice on the architecture-agility combination with a number of implications.", 
+    "research question" : [
+        {
+            "rq_id" : "1",
+            "rq_type" :  "generic",
+            "question" : "Which architecting activities can be used in agile development?",
+            "explanation" : "The architecting process is comprised of various architecting activities (e.g., Architectural Analysis, Architectural Description). We want to know which such activities can be used in agile development."
+        },
+        {
+            "rq_id" : "2",
+            "rq_type" :  "generic",
+            "question" : "How architecting can be practiced in agile development?",
+            "explanation" : "There are many architecting approaches (e.g., ATAM ([Kazman et al., 1998](https://www.sciencedirect.com/science/article/pii/S0164121215002125?via%3Dihub#bib0046))) proposed and practiced in software development. We want to know which specific approaches can be used in practicing architecture in agile development."
+        },
+        {
+            "rq_id" : "3",
+            "rq_type" :  "generic",
+            "question" : "Which agile development methods can be used with architecture?",
+            "explanation" : "There are many agile methods (e.g., XP and Scrum) which have been used in software development. We want to know which of the methods can be used together with architecture."
+        },
+        {
+            "rq_id" : "4",
+            "rq_type" :  "generic",
+            "question" : "Which practices of agile development can be used with architecture?",
+            "explanation" : "There are many practices (e.g., “Customer on Site”) in agile development. We want to get a clear view of which such practices can be used in the architecture-agility combination."
+        },
+        {
+            "rq_id" : "5",
+            "rq_type" :  "generic",
+            "question" : "What are the costs and benefits of the architecture-agility combination?",
+            "explanation" : "Combining agile methods and architecture leads to certain benefits (e.g., reduced re-engineering costs) but also incurs costs (e.g., development effort). We want to help researchers and practitioners understand and consider the architecture-agility combination in a cost-benefit perspective."
+        },
+        {
+            "rq_id" : "6",
+            "rq_type" :  "generic",
+            "question" : "What are the challenges in the architecture-agility combination?",
+            "explanation" : "There are obstacles (conflicts) in combining agile methods and architecture, e.g., SA implicitly follows a top-down development process while agility represents a bottom-up development and delivery of new features. These challenges can provide research directions for improving the architecture-agility combination."
+        },
+        {
+            "rq_id" : "7",
+            "rq_type" :  "generic",
+            "question" : "What are the factors that impact the success of applying the architecture-agility combination?",
+            "explanation" : "Whether an architecture-agility combination is successful or not may be impacted by certain factors (e.g. contextual factors) in software development. Note that Chen and Babar identified the contextual factors that impact architecture emergence in agile development ([Chen and Babar, 2014](https://www.sciencedirect.com/science/article/pii/S0164121215002125?via%3Dihub#bib0020)). Our SMS covers those contextual factors as well as other factors that impact the success of applying the architecture-agility combination. From this perspective, our study has a different focus and a larger scope compared with the study by Chen and Babar ([Chen and Babar, 2014](https://www.sciencedirect.com/science/article/pii/S0164121215002125?via%3Dihub#bib0020))."
+        },
+        {
+            "rq_id" : "8",
+            "rq_type" :  "generic",
+            "question" : "What tools are available to support the architecture-agility combination?",
+            "explanation" : "There are many tools that can be used for both architecture-centric development and agile development. We want to make practitioners aware of the tools that they may employ to facilitate the architecture-agility combination."
+        },
+        {
+            "rq_id" : "9",
+            "rq_type" :  "generic",
+            "question" : "What are the lessons learned from the architecture-agility combination?",
+            "explanation" : "The lessons learned cover the experience of the authors and potential good practices, when adopting architecture-agility combination."
+        }],
+    "criteria" : {
+        "inclusion" : [
+            {
+                "ic_id" : "1",
+                "criteria" : "The paper is peer-reviewed."
+            },
+            {
+                "ic_id" : "2",
+                "criteria" : "The paper concerns the architecture-agility combination."
+            }],
+        "exclusion" : [
+            {
+                "ec_id" : "1",
+                "criteria" : "The paper is a restricted version of a posterior paper."
+            },
+            {
+                "ec_id" : "2",
+                "criteria" : "The paper introduces an approach that uses architecture but is not applied in agile development."
+            },
+            {
+                "ec_id" : "3",
+                "criteria" : "The paper introduces an approach that uses agile methods but is not applied in architecture-centric development.",
+            },
+            {
+                "ec_id" : "4",
+                "criteria" : "The paper is grey literature."
+            },
+            {
+                "ec_id" : "5",
+                "criteria" : "The paper is not written in English."
+            }]},
+    "research query" : "(agile OR agility OR extreme programming OR XP OR feature driven development OR FDD OR scrum OR crystal OR pair programming OR test-driven development OR TDD OR leanness OR lean software development OR lean development OR LSD) AND (architecture OR architectural OR architecting)"
+}
