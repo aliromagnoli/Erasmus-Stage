@@ -18,6 +18,7 @@ import spacy
 
 spacy.cli.download("en_core_web_sm")
 import pandas as pd
+from torch.nn import functional as F
 import torch
 import random
 torch.cuda.empty_cache()
@@ -218,7 +219,7 @@ def count_parameters(model):
 """
 
 
-def model_creation(res_index, dataset):
+def model_creation(dataset):
 
     # CREATION OF RNN CLASS' INSTANCE
 
@@ -276,8 +277,10 @@ def train_model(model, iterator, criterion, optimizer, epoch, res_index): # iter
 
         # feed the batch of sentences, text, and their lengths, text_lengths into the model
         predictions = model(text, text_lengths).squeeze(1)
+        predictions_prob = F.softmax(predictions, dim=-1).detach().numpy()
+
         # squeeze is needed as the predictions are initially size [batch size, 1]
-        pred.append(predictions.cpu())
+        pred.append(predictions_prob)
         target.append(batch.label.cpu())
 
         # computation of loss
@@ -288,21 +291,33 @@ def train_model(model, iterator, criterion, optimizer, epoch, res_index): # iter
 
         epoch_loss += loss.item()
 
+    pred_df = pd.DataFrame()
+    pred_df["pred"] = [item for sublist in pred for item in sublist]
+    pred_df["target"] = [item.detach().numpy() for sublist in target for item in sublist]
+    pred_df["target"] = pred_df["target"].astype("float32")
 
-    pred_df = eval.arrange_predictions_and_targets([item.detach().numpy() for sublist in pred for item in sublist],
-                                                   [item.detach().numpy() for sublist in target for item in sublist])
+    pred_df.loc[pred_df["pred"] >= 0.5, "pred_class"] = 1
+    pred_df.loc[pred_df["pred"] < 0.5, "pred_class"] = 0
 
     row = {"df": res_index.get_df(),
            "model": "LSTM",
            "set": "train",
            "fold": res_index.get_fold(),
            "iteration": res_index.get_iter(),
-           "epoch": epoch,
-           "loss": epoch_loss}
+           "epoch": epoch}
 
-    row = eval.evalmetrics(pred_df["target"], pred_df["prediction"], [0, 1], row)
+    #row for metrics
+    m_new_row = row.copy()
+    m_new_row.update({"loss": epoch_loss})
+    metric_row = eval.evalmetrics(y_test = pred_df["target"],
+                                  y_pred = pred_df["pred_class"])
+    m_new_row.update(metric_row)
 
-    return row, pred_df
+    #row for predictions
+    p_new_row = row.copy()
+    p_new_row.update({"target" : pred_df["target"], "pred" : pred_df["pred"]})
+
+    return m_new_row, p_new_row
 
 
 def evaluate_model(model, iterator, criterion, epoch, res_index, set_type):  # similar to train, without the the update of the parameters
@@ -319,27 +334,42 @@ def evaluate_model(model, iterator, criterion, epoch, res_index, set_type):  # s
             text, text_lengths = batch.text  # separate batch.text
 
             predictions = model(text, text_lengths).squeeze(1)
-            pred.append(predictions.cpu())
+            predictions_prob = F.softmax(predictions, dim=-1).detach().numpy()
+
+            pred.append(predictions_prob)
             target.append(batch.label.cpu())
 
             loss = criterion(predictions, batch.label)
 
             epoch_loss += loss.item()
 
-    pred_df = eval.arrange_predictions_and_targets([item.detach().numpy() for sublist in pred for item in sublist],
-                                                   [item.detach().numpy() for sublist in target for item in sublist])
+    pred_df = pd.DataFrame()
+    pred_df["pred"] = [item for sublist in pred for item in sublist]
+    pred_df["target"] = [item.detach().numpy() for sublist in target for item in sublist]
+    pred_df["target"] = pred_df["target"].astype("float32")
+
+    pred_df.loc[pred_df["pred"] >= 0.5, "pred_class"] = 1
+    pred_df.loc[pred_df["pred"] < 0.5, "pred_class"] = 0
 
     row = {"df": res_index.get_df(),
-           "model": "LSTM",
-           "set": set_type,
-           "fold": res_index.get_fold(),
-           "iteration": res_index.get_iter(),
-           "epoch": epoch,
-           "loss": epoch_loss}
+               "model": "LSTM",
+               "set": set_type,
+               "fold": res_index.get_fold(),
+               "iteration": res_index.get_iter(),
+               "epoch": epoch}
 
-    row = eval.evalmetrics(pred_df["target"], pred_df["prediction"], [0, 1], row)
+    # row for metrics
+    m_new_row = row.copy()
+    m_new_row.update({"loss": epoch_loss})
+    metric_row = eval.evalmetrics(y_test=pred_df["target"],
+                                  y_pred=pred_df["pred_class"])
+    m_new_row.update(metric_row)
 
-    return row, pred_df
+    # row for predictions
+    p_new_row = row.copy()
+    p_new_row.update({"target": pred_df["target"], "pred": pred_df["pred"]})
+
+    return m_new_row, p_new_row
 
 
 def epoch_time(start_time, end_time):
@@ -352,7 +382,9 @@ def epoch_time(start_time, end_time):
     return elapsed_mins, elapsed_secs
 
 
-def nn_training(train_data, valid_data, test_data, res_index, dataset, res, epochs_res, best_tr_pred_dict, best_v_pred_dict, te_pred_dict):
+def nn_training(train_data, valid_data, test_data, dataset, res_index, res, epochs_res, pred):
+
+    pred_df = pd.DataFrame()
 
     # CREATION OF ITERATORS
     train_iterator, valid_iterator, test_iterator = data.BucketIterator.splits(
@@ -362,13 +394,11 @@ def nn_training(train_data, valid_data, test_data, res_index, dataset, res, epoc
         sort_key=lambda x: len(x.text),
         sort_within_batch=True)
 
-    model, criterion, optimizer = model_creation(res_index, dataset)
+    model, criterion, optimizer = model_creation(dataset)
 
     """ TRAINING """
 
     best_val_results = {"loss": 1}
-    tr_pred_dict = {}
-    v_pred_dict = {}
 
     for epoch in range(N_EPOCHS):
 
@@ -381,7 +411,7 @@ def nn_training(train_data, valid_data, test_data, res_index, dataset, res, epoc
                                                  optimizer = optimizer,
                                                  epoch = epoch+1,
                                                  res_index = res_index)
-        tr_pred_dict.update({epoch+1: train_preds})
+        pred_df = pd.concat([pred_df, pd.DataFrame([train_preds])], ignore_index=True, axis=0)
 
         # evaluation
         val_results, val_preds = evaluate_model(model = model,
@@ -390,7 +420,7 @@ def nn_training(train_data, valid_data, test_data, res_index, dataset, res, epoc
                                                 epoch = epoch+1,
                                                 res_index = res_index,
                                                 set_type = "validation")
-        v_pred_dict.update({epoch + 1: val_preds})
+        pred_df = pd.concat([pred_df, pd.DataFrame([val_preds])], ignore_index=True, axis=0)
 
         # computation of time
         end_time = time.time()
@@ -406,22 +436,19 @@ def nn_training(train_data, valid_data, test_data, res_index, dataset, res, epoc
 
         # results for each epoch
         print(f'Epoch: {epoch+1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
-        print(f'\tTrain Loss: {train_results["loss"]} | Train Acc: {train_results["acc"]}% | Train Recall: {train_results["recall"]}% | Train Precision: {train_results["precision"]}% | Train F2: {train_results["f2"]}% | Train F3: {train_results["f3"]}%')
-        print(f'\t Val. Loss: {val_results["loss"]} |  Val. Acc: {val_results["acc"]}% | Val. Recall: {val_results["recall"]}% | Val. Precision: {val_results["precision"]}% | Val. F2: {val_results["f2"]}% | Val. F3: {val_results["f3"]}%')
+        print(f'\tTrain Loss: {train_results["loss"]} | Train Acc: {train_results["accuracy"]}% | Train Recall: {train_results["recall"]}% | Train Precision: {train_results["precision"]}% | Train F2: {train_results["f2_score"]}% | Train F3: {train_results["f3_score"]}%')
+        print(f'\t Val. Loss: {val_results["loss"]} |  Val. Acc: {val_results["accuracy"]}% | Val. Recall: {val_results["recall"]}% | Val. Precision: {val_results["precision"]}% | Val. F2: {val_results["f2_score"]}% | Val. F3: {val_results["f3_score"]}%')
 
-        epochs_res = epochs_res.append(train_results, ignore_index=True)
-        epochs_res = epochs_res.append(val_results, ignore_index=True)
+        epochs_res = pd.concat([epochs_res, pd.DataFrame([train_results])], ignore_index=True, axis=0)
+        epochs_res = pd.concat([epochs_res, pd.DataFrame([val_results])], ignore_index=True, axis=0)
 
     # RESULTS ON TRAIN AND VALIDATION SET WITH THE BEST MODEL
 
     print(f'Epoch: {best_train_results["epoch"]}')
     print(
-        f'\tTrain Loss: {best_train_results["loss"]} | Train Acc: {best_train_results["acc"]}% | Train Recall: {best_train_results["recall"]}% | Train Precision: {best_train_results["precision"]}% | Train F2: {best_train_results["f2"]}% | Train F3: {best_train_results["f3"]}%')
+        f'\tTrain Loss: {best_train_results["loss"]} | Train Acc: {best_train_results["accuracy"]}% | Train Recall: {best_train_results["recall"]}% | Train Precision: {best_train_results["precision"]}% | Train F2: {best_train_results["f2_score"]}% | Train F3: {best_train_results["f3_score"]}%')
     print(
-        f'\tVal. Loss: {best_val_results["loss"]} |  Val. Acc: {best_val_results["acc"]}% | Val. Recall: {best_val_results["recall"]}% | Val. Precision: {best_val_results["precision"]}% | Val. F2: {best_val_results["f2"]}% | Val. F3: {best_val_results["f3"]}%')
-
-    best_tr_pred_dict.update({res_index.get_iter(): tr_pred_dict[best_train_results["epoch"]]})
-    best_v_pred_dict.update({res_index.get_iter(): v_pred_dict[best_train_results["epoch"]]})
+        f'\tVal. Loss: {best_val_results["loss"]} |  Val. Acc: {best_val_results["accuracy"]}% | Val. Recall: {best_val_results["recall"]}% | Val. Precision: {best_val_results["precision"]}% | Val. F2: {best_val_results["f2_score"]}% | Val. F3: {best_val_results["f3_score"]}%')
 
     # RESULTS ON TEST SET
 
@@ -435,14 +462,16 @@ def nn_training(train_data, valid_data, test_data, res_index, dataset, res, epoc
                                               set_type = "test")
 
     print(
-        f'\nTest Loss: {test_results["loss"]} | Test Acc: {test_results["acc"]}% | Test Recall: {test_results["recall"]}% | Test Precision: {test_results["precision"]}% | Test F2: {test_results["f2"]}% | Test F3: {test_results["f3"]}%')
+        f'\nTest Loss: {test_results["loss"]} | Test Acc: {test_results["accuracy"]}% | Test Recall: {test_results["recall"]}% | Test Precision: {test_results["precision"]}% | Test F2: {test_results["f2_score"]}% | Test F3: {test_results["f3_score"]}%')
 
-    te_pred_dict.update({res_index.get_iter(): test_preds})
+    pred_df = pd.concat([pred_df, pd.DataFrame([test_preds])], ignore_index=True, axis=0)
 
-    res = res.append(best_train_results, ignore_index=True)
-    res = res.append(best_val_results, ignore_index=True)
-    res = res.append(test_results, ignore_index=True)
-    epochs_res = epochs_res.append(test_results, ignore_index=True)
+    pred = pd.concat([pred, pred_df[pred_df["epoch"] == best_train_results["epoch"]]], ignore_index=True, axis=0)
+
+    res = pd.concat([res, pd.DataFrame([best_train_results])], ignore_index=True, axis=0)
+    res = pd.concat([res, pd.DataFrame([best_val_results])], ignore_index=True, axis=0)
+    res = pd.concat([res, pd.DataFrame([test_results])], ignore_index=True, axis=0)
+    epochs_res = pd.concat([epochs_res, pd.DataFrame([test_results])], ignore_index=True, axis=0)
 
     print(epochs_res.shape)
     display(epochs_res.head())
@@ -450,4 +479,6 @@ def nn_training(train_data, valid_data, test_data, res_index, dataset, res, epoc
     print(res.shape)
     display(res.head())
 
-    return res
+    pred.drop('epoch', axis=1, inplace=True)
+
+    return epochs_res, res, pred

@@ -111,11 +111,9 @@ def ml_training(X_train, y_train, X_test, y_test, pred, res, res_index, seed):
         # evaluation metrics
 
         print("\n", new_row["model"], "RESULTS:\n")
-        res = eval.evalmetrics(y_test = y_test,
-                               pred_test = pred_class_test,
-                               res = res,
-                               labels = m.classes_,
-                               new_row = new_row,
-                               update_res = True)
+        row = eval.evalmetrics(y_test = y_test,
+                               y_pred = pred_class_test)
+        new_row.update(row)
+        res = pd.concat([res, pd.DataFrame([new_row])], ignore_index=True, axis=0) #res update
 
     return res, pred
