@@ -36,7 +36,7 @@ for df in dataset_list:
 SEED = [1009]#, 2839, 516, 2383, 273, 1625, 1324, 2791, 7, 1928] #for cross-validation
 
 #parameters
-APPROACH = 1
+APPROACH = 3
 CLEAN_TEXT = True
 TRAIN_SIZE = 0.5
 SAMPLING = 1
@@ -45,16 +45,11 @@ K = 95
 """## Training with cross validation"""
 
 #creating dataset to save results
-res = pd.DataFrame()
+all_epochs_res = pd.DataFrame() #results for all epochs
+res = pd.DataFrame() #results for best epochs only
 
-#creating datasets and dictionaries to save predictions
-pred = pd.DataFrame() #ML predictions
-all_epochs_res = pd.DataFrame() #NN predictions
-best_train_preds_dict = {} #NN predictions
-best_valid_preds_dict = {} #NN predictions
-test_preds_dict = {} #NN predictions
-
-
+#creating dataset to save predictions
+pred = pd.DataFrame() #predictions
 
 for i in dataset:
 
@@ -134,12 +129,9 @@ for i in dataset:
         elif APPROACH == 3:
             all_epochs_res, res, pred = tl.tl_training(df=df,
                                                        epochs_res = all_epochs_res,
+                                                       res_index = res_index,
                                                        res = res,
-                                                       pred=pred,
-                                                       res_index = res_index)
-
-
-
+                                                       pred=pred)
 
 pred_df = eval.adjust_pred(pred = pred, approach = APPROACH)
 #compute metrics at 95% recall

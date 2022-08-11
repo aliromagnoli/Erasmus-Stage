@@ -1,4 +1,5 @@
 import methods_data_import_and_preprocessing as pr
+import methods_evaluation_metrics as eval
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -11,6 +12,8 @@ from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 from sklearn.metrics import accuracy_score, f1_score
 
 #PARAMETERS
+import methods_evaluation_metrics
+
 TEST_SIZE = 0.8
 MODEL_CKPT = "distilbert-base-uncased"
 MODEL_NAME = f"{MODEL_CKPT}-approach3"
@@ -61,7 +64,9 @@ def tokenize_whole_df(df):
     #tokenize the dataset
     return df.map(tokenize, batched=True, batch_size=None)
 
-def tl_training(df):
+def tl_training(df, epochs_res, res_index, res, pred):
+
+    best_row = {"loss":1}
     model = (AutoModelForSequenceClassification.from_pretrained(MODEL_CKPT, num_labels=2).to(DEVICE))
     logging_steps = len(df["train"]) // BATCH_SIZE
 
@@ -76,42 +81,78 @@ def tl_training(df):
                                       logging_steps=logging_steps,
                                       push_to_hub=True,
                                       log_level="error")
-    """
-    row = {"df": dataset_name,
-           "model": "DISTILBERT",
-           "set": "train",
-           "fold": res_index.get_fold(),
-           "iteration": res_index.get_iter(),
-           "epoch": epoch,
-           "loss": epoch_loss}
-    """
 
-    trainer = Trainer(model=model, args=training_args,
-                      compute_metrics=compute_metrics,
+    row = {"df": res_index.get_df(),
+           "model": "DISTILBERT",
+           "fold": res_index.get_fold(),
+           "iteration": res_index.get_iter()}
+
+    #training + validation
+
+    trainer = Trainer(model=model,
+                      args=training_args,
+                      compute_metrics=eval.tl_metrics,
                       train_dataset=df["train"],
                       eval_dataset=df["validation"],
                       tokenizer=tokenizer)
-
     trainer.train();
-    preds_output = trainer.predict(df["validation"])
-    print(preds_output.metrics)
-    y_preds = np.argmax(preds_output.predictions, axis=1)
-    y_valid = np.array(df["validation"]["label"])
-    plot_confusion_matrix(y_preds, y_valid)
+
+    for i in trainer.state.log_history:
+        if "eval_loss" in i:
+
+            new_row = row.copy()
+            new_row.update({'set': "validation", #metrics
+                            'epoch': i["epoch"],
+                            'loss' : i["eval_loss"],
+                            'accuracy': i["eval_accuracy"],
+                            'precision': i["eval_precision"],
+                            'recall': i["eval_recall"],
+                            'true_negative_rate': i["eval_true_negative_rate"],
+                            'f2_score': i["eval_f2_score"],
+                            'f3_score': i["eval_f3_score"],
+                            'target' : i["eval_pred_df"]["target"],
+                            'pred' : i["eval_pred_df"]["prediction"]})
+
+            epochs_res = pd.concat([epochs_res, pd.DataFrame([new_row])], ignore_index=True, axis=0) #save validation metrics for each epoch
+
+            if new_row["loss"] < best_row["loss"]:
+                best_row = new_row
+
+    #test evaluation
+    preds_output = trainer.predict(df["test"])
+    new_row = row.copy()
+    new_row.update({'set': "test",  # metrics
+                    'epoch': best_row["epoch"],
+                    'loss': preds_output.metrics["test_loss"],
+                    'accuracy': preds_output.metrics["test_accuracy"],
+                    'precision': preds_output.metrics["test_precision"],
+                    'recall': preds_output.metrics["test_recall"],
+                    'true_negative_rate': preds_output.metrics["test_true_negative_rate"],
+                    'f2_score': preds_output.metrics["test_f2_score"],
+                    'f3_score': preds_output.metrics["test_f3_score"],
+                    'target' : preds_output.metrics["test_pred_df"]["target"],
+                    'pred' : preds_output.metrics["test_pred_df"]["prediction"]})
+
+    epochs_res = pd.concat([epochs_res, pd.DataFrame([new_row])], ignore_index=True, axis=0) #save test metrics for each epoch
+    epochs_res.drop(['target', 'pred'], axis=1, inplace=True) #remove targets and preds from metrics results for each epoch
+
+    res = pd.concat([res, pd.DataFrame([best_row])], ignore_index=True, axis=0)  #save validation metrics of the best epoch
+    res = pd.concat([res, pd.DataFrame([new_row])], ignore_index=True, axis=0)  # save test metrics of the best epoch
+
+    pred = pd.concat([pred, res.loc[~res['target'].isnull(), ["df", "model", "set", "fold", "iteration", "target", "pred"]].copy()],
+                        ignore_index=True, axis=0)  #pred contains targets and preds for best epochs
+    res.drop(['target', 'pred'], axis=1, inplace=True)  #remove targets and preds from metrics results for best epochs
+
+    return epochs_res, res, pred
 
 
-def plot_confusion_matrix(y_preds, y_true):
-    cm = confusion_matrix(y_true, y_preds, normalize="true")
-    fig, ax = plt.subplots(figsize=(6, 6))
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-    disp.plot(cmap="Blues", values_format=".2f", ax=ax, colorbar=False)
-    plt.title("Normalized confusion matrix")
-    plt.show()
 
 
-def compute_metrics(pred):
-    labels = pred.label_ids
-    preds = pred.predictions.argmax(-1)
-    f1 = f1_score(labels, preds, average="weighted")
-    acc = accuracy_score(labels, preds)
-    return {"accuracy": acc, "f1": f1}
+
+
+
+
+
+
+
+
