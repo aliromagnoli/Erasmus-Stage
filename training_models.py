@@ -27,13 +27,14 @@ spacy.cli.download("en_core_web_sm")
 
 #import of the preprocessed datasets
 path = os.getcwd() + "\datasets\preprocessed_datasets"
-dataset_list = ["alhammad"] #"ace", "copd", "ppi", "alhammad", "ghasemi", "goulao", "guinea", "santos", "shahin", "yang"]
+dataset_list = ["ace", "copd", "ppi", "alhammad", "ghasemi", "goulao", "guinea", "santos", "shahin", "yang"]
 dataset = dict()
 for df in dataset_list:
   dataset[df] = pd.read_csv(path + "/preprocessed_" + df + ".csv", index_col=0)
+  dataset[df] = pd.DataFrame(dataset[df])
 
 #random seed for reproducibility
-SEED = [1009]#, 2839, 516, 2383, 273, 1625, 1324, 2791, 7, 1928] #for cross-validation
+SEED = [1009, 2839] #, 516, 2383, 273, 1625, 1324, 2791, 7, 1928] #for cross-validation
 
 #parameters
 APPROACH = 3
@@ -53,7 +54,7 @@ pred = pd.DataFrame() #predictions
 
 for i in dataset:
 
-  dataset[i] = dataset[i].loc[:40,:]
+  #dataset[i] = dataset[i].loc[100,:]
 
   print("\nDATASET", i, "\n")
   j = 0 # fold number

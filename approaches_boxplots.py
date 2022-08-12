@@ -12,12 +12,16 @@ import os
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-#import of ml results
+#import of approaches results
 path = os.getcwd() + "\\results"
-results = pd.read_csv(path + "/approach_1_results.csv")
+results_1 = pd.read_csv(path + "\\approach_1_results.csv", index_col=0)
+results_1["set"] = "test"
+results_2 = pd.read_csv(path + "\\approach_2_results.csv", index_col=0)
+results_3 = pd.read_csv(path + "\\approach_3_results.csv", index_col=0)
+results = pd.concat([results_1, results_2, results_3], ignore_index=True, axis=0)
+
 
 print(results.shape)
-
 print(results.head())
 print(results.columns)
 
