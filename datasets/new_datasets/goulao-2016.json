@@ -131,6 +131,4 @@
                 "criteria" : "The paper does not include a secondary study."
             }]},
     "research query" : "(\"model driven\" OR \"MDE\" OR \"MDD\") AND (\"systematic review\" OR \"literature review\" OR \"literature survey\" OR \"survey\" OR \"overview of research\" OR \"mapping study\" OR \"review\")"
-
-
 }

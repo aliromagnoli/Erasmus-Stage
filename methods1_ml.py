@@ -13,19 +13,6 @@ from sklearn.calibration import CalibratedClassifierCV
 
 models = {"SVM" : LinearSVC, "DT" : DecisionTreeClassifier, "RF" : RandomForestClassifier, "LR" : LogisticRegression}
 
-def flatten_words(l, get_unique=False):
-    """
-    Given a list "l" containing strings,
-    it returns the flatten version of the list,
-    maintaining only the unique strings if get_unique=True.
-    """
-    qa = [s.split() for s in l]
-    if get_unique:
-        return sorted(list(set([w for sent in qa for w in sent])))
-    else:
-        return [w for sent in qa for w in sent]
-
-
 def final_ml_preprocessing(train, test, sampling, seed):
     """
     Given a training set "train" and a test set "test",
@@ -50,7 +37,7 @@ def final_ml_preprocessing(train, test, sampling, seed):
 
     # tf-idf
     all_text = X_train["text_clean"].values.tolist() + X_test["text_clean"].values.tolist()
-    vocab = flatten_words(all_text, get_unique=True)
+    vocab = pr.flatten_words(all_text, get_unique=True)
     tfidf = TfidfVectorizer(stop_words='english', vocabulary=vocab)
     training_matrix = tfidf.fit_transform(X_train["text_clean"])
     test_matrix = tfidf.fit_transform(X_test["text_clean"])

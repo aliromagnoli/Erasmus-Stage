@@ -187,5 +187,18 @@ def oversampling(X_train, y_train, sampling, seed):
     return X_train, y_train
 
 
+def flatten_words(l, get_unique=False):
+    """
+    Given a list "l" containing strings,
+    it returns the flatten version of the list,
+    maintaining only the unique strings if get_unique=True.
+    """
+    qa = [s.split() for s in l]
+    if get_unique:
+        return sorted(list(set([w for sent in qa for w in sent])))
+    else:
+        return [w for sent in qa for w in sent]
+
+
 
 
