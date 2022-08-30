@@ -66,8 +66,8 @@ def evalmetrics(y_test, y_pred, logit_scores=None):
         torch_logits = torch.from_numpy(logit_scores)
         # get probabilities using softmax from logit score and convert it to numpy array
         y_pred = F.softmax(torch_logits, dim=-1).numpy()[:, 1]
-        pred_df = arrange_predictions_and_targets(pred = y_pred,
-                                                  target = y_test)
+        pred_df = arrange_predictions_and_targets(pred=y_pred,
+                                                  target=y_test)
         row.update({"pred_df" : pred_df})
 
     return row
@@ -91,12 +91,12 @@ def update_avg_res(res, avg_res, condition, new_condition):
 def compute_avg_std(res, approach):
     """
     Given a dataset "res" that stores the metrics, it returns the avg and std for
-    every metics stored in "res".
+    every metrics stored in "res".
     """
 
     avg_res = pd.DataFrame()
 
-    if approach == 1:
+    if approach == "ML":
         for k in res["df"].unique():
             for j in res["model"].unique():
                 condition = (res["df"] == k) & (res["model"] == j)
@@ -111,13 +111,13 @@ def compute_avg_std(res, approach):
                                          new_condition = new_condition)
 
 
-    elif approach in [2, 3]:
+    elif approach in ["NN", "TL"]:
         for k in res["df"].unique():
             for j in res["model"].unique():
                 for h in res["set"].unique():
                     condition = (res["df"] == k) & (res["model"] == j) & (res["set"] == h)
 
-                    new_row = {"df": k, "model": j, "set" : h}
+                    new_row = {"df": k, "model": j, "set": h}
                     avg_res = pd.concat([avg_res, pd.DataFrame([new_row])], ignore_index=True, axis=0)  # avg_res update
                     new_condition = (avg_res["df"] == k) & (avg_res["model"] == j) & (avg_res["set"] == h)
 
@@ -194,8 +194,8 @@ def compute_rank_based_metrics(pred, res, approach, K=95):
 
     # selection of the rows where recall@95
     last_positive_rank = get_rank_at_k(pred_df, relevant_docs)
-    pred_df_95 = pred_df[:last_positive_rank + 1]
-    pred_df_5 = pred_df[last_positive_rank + 1:]
+    pred_df_95 = pred_df[:last_positive_rank+1]
+    pred_df_5 = pred_df[last_positive_rank+1:]
     TP_95, TN_95, FP_95, FN_95 = getTpTnFpFn(pred_df_95)
     TP_5, TN_5, FP_5, FN_5 = getTpTnFpFn(pred_df_5)
 
@@ -218,9 +218,9 @@ def compute_rank_based_metrics(pred, res, approach, K=95):
     WSS_k = ((N - last_positive_rank) / N) - ((100 - K) / 100)
 
     # update results dataset
-    if approach == 1:
+    if approach == "ML":
         condition = (res["df"] == pred["df"]) & (res["model"] == pred["model"]) & (res["fold"] == pred["fold"])
-    elif approach in [2, 3]:
+    elif approach in ["NN", "TL"]:
         condition = (res["df"] == pred["df"]) & (res["set"] == pred["set"]) & (res["fold"] == pred["fold"])
     res.loc[condition, "true_negative_rate@95"] = round(TNR_k * 100, 2)
     res.loc[condition, "precision@95"] = round(precision_k * 100, 2)
@@ -232,7 +232,7 @@ def compute_rank_based_metrics(pred, res, approach, K=95):
 def adjust_pred(pred, approach):
     pred_df = pd.DataFrame()
 
-    if approach == 1:
+    if approach == "ML":
         col = "model"
     else:
         col = "set"
@@ -245,7 +245,7 @@ def adjust_pred(pred, approach):
                 new_row = {"df" : d, col : c, "fold" : f,
                            "target" : pd.concat([rows.loc[0, "target"], rows.loc[1, "target"]], ignore_index=True, axis=0),
                            "pred" : pd.concat([rows.loc[0, "pred"], rows.loc[1, "pred"]], ignore_index=True, axis=0)}
-                if approach != 1:
+                if approach != "ML":
                     new_row.update({"model" : pred["model"].unique()[0]})
                 pred_df = pd.concat([pred_df, pd.DataFrame([new_row])], ignore_index=True, axis=0)
 

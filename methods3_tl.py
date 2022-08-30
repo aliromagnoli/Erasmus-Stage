@@ -1,25 +1,20 @@
 import methods_data_import_and_preprocessing as pr
 import methods_evaluation_metrics as eval
 import pandas as pd
-import numpy as np
 from sklearn.model_selection import train_test_split
 import random
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, Trainer, TrainingArguments
 import torch
 import datasets
-import matplotlib.pyplot as plt
-from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
-from sklearn.metrics import accuracy_score, f1_score
 
 #PARAMETERS
-import methods_evaluation_metrics
 
 TEST_SIZE = 0.8
 MODEL_CKPT = "distilbert-base-uncased"
 MODEL_NAME = f"{MODEL_CKPT}-approach3"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-BATCH_SIZE = 10 #64
-NUM_EPOCHS = 2
+BATCH_SIZE = 16
+NUM_EPOCHS = 20
 LEARNING_RATE = 2e-5
 
 #create tokenizer

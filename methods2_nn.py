@@ -9,13 +9,11 @@ Original file is located at
 # Neural Network approach with RNN
 """
 
-
 """## Libraries and data import"""
 
 import methods_data_import_and_preprocessing as pr
 import methods_evaluation_metrics as eval
 import spacy
-
 spacy.cli.download("en_core_web_sm")
 import pandas as pd
 from torch.nn import functional as F
@@ -50,7 +48,7 @@ OUTPUT_DIM = 1  # number of classes
 N_LAYERS = 5
 BIDIRECTIONAL = True
 DROPOUT = 0.5
-N_EPOCHS = 2
+N_EPOCHS = 20
 
 
 def maintain_only_text_label(df, clean_text):
@@ -277,10 +275,10 @@ def train_model(model, iterator, criterion, optimizer, epoch, res_index): # iter
 
         # feed the batch of sentences, text, and their lengths, text_lengths into the model
         predictions = model(text, text_lengths).squeeze(1)
-        predictions_prob = F.softmax(predictions, dim=-1).detach().numpy()
+        predictions_prob = F.softmax(predictions, dim=-1)#.detach().numpy()
 
         # squeeze is needed as the predictions are initially size [batch size, 1]
-        pred.append(predictions_prob)
+        pred.append(predictions_prob.cpu())
         target.append(batch.label.cpu())
 
         # computation of loss
@@ -293,7 +291,7 @@ def train_model(model, iterator, criterion, optimizer, epoch, res_index): # iter
 
     pred_df = pd.DataFrame()
     pred_df["pred"] = [item for sublist in pred for item in sublist]
-    pred_df["target"] = [item.detach().numpy() for sublist in target for item in sublist]
+    pred_df["target"] = [item for sublist in target for item in sublist]
     pred_df["target"] = pred_df["target"].astype("float32")
 
     pred_df.loc[pred_df["pred"] >= 0.5, "pred_class"] = 1
@@ -309,13 +307,13 @@ def train_model(model, iterator, criterion, optimizer, epoch, res_index): # iter
     #row for metrics
     m_new_row = row.copy()
     m_new_row.update({"loss": epoch_loss})
-    metric_row = eval.evalmetrics(y_test = pred_df["target"],
-                                  y_pred = pred_df["pred_class"])
+    metric_row = eval.evalmetrics(y_test=pred_df["target"],
+                                  y_pred=pred_df["pred_class"])
     m_new_row.update(metric_row)
 
     #row for predictions
     p_new_row = row.copy()
-    p_new_row.update({"target" : pred_df["target"], "pred" : pred_df["pred"]})
+    p_new_row.update({"target": pred_df["target"], "pred": pred_df["pred"]})
 
     return m_new_row, p_new_row
 
@@ -334,9 +332,9 @@ def evaluate_model(model, iterator, criterion, epoch, res_index, set_type):  # s
             text, text_lengths = batch.text  # separate batch.text
 
             predictions = model(text, text_lengths).squeeze(1)
-            predictions_prob = F.softmax(predictions, dim=-1).detach().numpy()
+            predictions_prob = F.softmax(predictions, dim=-1) #.detach().numpy()
 
-            pred.append(predictions_prob)
+            pred.append(predictions_prob.cpu())
             target.append(batch.label.cpu())
 
             loss = criterion(predictions, batch.label)

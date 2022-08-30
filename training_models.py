@@ -22,25 +22,27 @@ from sklearn.model_selection import train_test_split
 import random
 import spacy
 spacy.cli.download("en_core_web_sm")
+import fasttext_attempt as ft
 
 """## Data preparation"""
 
 #import of the preprocessed datasets
-path = os.getcwd() + "\datasets\preprocessed_datasets"
-dataset_list = ["ace", "copd", "ppi", "alhammad", "ghasemi", "goulao", "guinea", "santos", "shahin", "yang"]
+abs_path = "/newstorage5/aromagno"
+path = abs_path + "/preprocessed_datasets"
+dataset_list = ["alhammad"] # "ace", "copd", "ppi", "alhammad", "ghasemi", "goulao", "guinea", "santos", "shahin", "yang"]
 dataset = dict()
 for df in dataset_list:
   dataset[df] = pd.read_csv(path + "/preprocessed_" + df + ".csv", index_col=0)
   dataset[df] = pd.DataFrame(dataset[df])
 
 #random seed for reproducibility
-SEED = [1009, 2839] #, 516, 2383, 273, 1625, 1324, 2791, 7, 1928] #for cross-validation
+SEED = [1009, 2839, 516, 2383, 273, 1625, 1324, 2791, 7, 1928] #for cross-validation
 
 #parameters
-APPROACH = 3
+APPROACH = "FT"
 CLEAN_TEXT = True
 TRAIN_SIZE = 0.5
-SAMPLING = 1
+SAMPLING = 0.75
 K = 95
 
 """## Training with cross validation"""
@@ -59,9 +61,9 @@ for i in dataset:
   print("\nDATASET", i, "\n")
   j = 0 # fold number
 
-  if APPROACH in [2, 3]:
-      dataset[i] = nn.maintain_only_text_label(df = dataset[i],
-                                               clean_text = CLEAN_TEXT)
+  if APPROACH in ["NN", "TL", "FT"]:
+      dataset[i] = nn.maintain_only_text_label(df=dataset[i],
+                                               clean_text=CLEAN_TEXT)
 
   #cross validation k folds
   for h in range(len(SEED)):
@@ -90,69 +92,85 @@ for i in dataset:
 
         #PREPARING DATASET
 
-        if APPROACH == 1:
+        if APPROACH == "ML":
             X_train, y_train, X_test, y_test = ml.final_ml_preprocessing(train = train,
                                                                          test = test,
                                                                          sampling = SAMPLING,
                                                                          seed = SEED[0])
-        elif APPROACH == 2:
+        elif APPROACH == "NN":
             train_data, valid_data, test_data = nn.final_nn_preprocessing(train = train,
                                                                           test = test,
                                                                           sampling = SAMPLING,
                                                                           seed = SEED[0])
-        elif APPROACH == 3:
+        elif APPROACH == "TL":
             df = tl.final_tl_preprocessing(train = train,
                                            test = test,
                                            sampling = SAMPLING,
                                            seed = SEED[0])
 
+        elif APPROACH == "FT":
+            train, test = ft.final_preprocessing(train=train,
+                                                    test=test,
+                                                    sampling=SAMPLING,
+                                                    seed=SEED[0],
+                                                    path=abs_path)
+
+
         ### TRAINING
 
-        if APPROACH == 1:
-            res, pred = ml.ml_training(X_train = X_train,
-                                       y_train = y_train,
-                                       X_test = X_test,
-                                       y_test = pd.DataFrame(y_test),
-                                       pred = pred,
-                                       res = res,
-                                       res_index = res_index,
-                                       seed = SEED[0])
-        elif APPROACH == 2:
-            all_epochs_res, res, pred = nn.nn_training(train_data = train_data,
-                                                       valid_data = valid_data,
-                                                       test_data = test_data,
+        if APPROACH == "ML":
+            res, pred = ml.ml_training(X_train=X_train,
+                                       y_train=y_train,
+                                       X_test=X_test,
+                                       y_test=pd.DataFrame(y_test),
+                                       pred=pred,
+                                       res=res,
+                                       res_index=res_index,
+                                       seed=SEED[0])
+        elif APPROACH == "NN":
+            all_epochs_res, res, pred = nn.nn_training(train_data=train_data,
+                                                       valid_data=valid_data,
+                                                       test_data=test_data,
                                                        dataset=dataset[i],
-                                                       res_index = res_index,
-                                                       res = res,
-                                                       epochs_res = all_epochs_res,
-                                                       pred = pred)
-
-        elif APPROACH == 3:
-            all_epochs_res, res, pred = tl.tl_training(df=df,
-                                                       epochs_res = all_epochs_res,
-                                                       res_index = res_index,
-                                                       res = res,
+                                                       res_index=res_index,
+                                                       res=res,
+                                                       epochs_res=all_epochs_res,
                                                        pred=pred)
 
-pred_df = eval.adjust_pred(pred = pred, approach = APPROACH)
-#compute metrics at 95% recall
-res = res.reindex(columns=res.columns.tolist() + ["true_negative_rate@95", "precision@95", "wss@95"])
-for l in range(len(pred_df)):
-    res = eval.compute_rank_based_metrics(pred = pred_df.iloc[l],
-                                          res = res,
-                                          approach = APPROACH,
-                                          K = K)
+        elif APPROACH == "TL":
+            all_epochs_res, res, pred = tl.tl_training(df=df,
+                                                       epochs_res=all_epochs_res,
+                                                       res_index=res_index,
+                                                       res=res,
+                                                       pred=pred)
 
-avg_res = eval.compute_avg_std(res = res, approach = APPROACH)
+        elif APPROACH == "FT":
+            ft.training(train=train,
+                        test=test,
+                        res_index=res_index,
+                        res=res,
+                        pred=pred)
+
+if APPROACH != "FT":
+    pred_df = eval.adjust_pred(pred = pred, approach = APPROACH)
+    #compute metrics at 95% recall
+    res = res.reindex(columns=res.columns.tolist() + ["true_negative_rate@95", "precision@95", "wss@95"])
+    for l in range(len(pred_df)):
+        res = eval.compute_rank_based_metrics(pred = pred_df.iloc[l],
+                                              res = res,
+                                              approach = APPROACH,
+                                              K = K)
+
+    avg_res = eval.compute_avg_std(res = res, approach = APPROACH)
 
 
-#saving results in a csv file
-path = os.getcwd() + "\\results"
-with open(path + "\\approach_" + str(APPROACH) + "_results.csv", 'w', encoding = 'utf-8-sig') as f:
-  res.to_csv(f)
-with open(path + "\\approach_" + str(APPROACH) + "_avg_results.csv", 'w', encoding = 'utf-8-sig') as f:
-  avg_res.to_csv(f)
-if APPROACH in [2, 3]:
-    with open(path + "\\approach_" + str(APPROACH) + "_all_epochs_results.csv", 'w', encoding='utf-8-sig') as f:
-        all_epochs_res.to_csv(f)
+    #saving results in a csv file
+    path = abs_path + "/results"
+    with open(path + "/approach_" + str(APPROACH) + "_results_" + i + ".csv", 'w', encoding = 'utf-8-sig') as f:
+      res.to_csv(f)
+    with open(path + "/approach_" + str(APPROACH) + "_avg_results_" + i + ".csv", 'w', encoding = 'utf-8-sig') as f:
+      avg_res.to_csv(f)
+    if APPROACH in ["NN", "TL"]:
+        with open(path + "/approach_" + str(APPROACH) + "_all_epochs_results_" + i + ".csv", 'w', encoding='utf-8-sig') as f:
+            all_epochs_res.to_csv(f)
 
