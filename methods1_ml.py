@@ -11,7 +11,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.calibration import CalibratedClassifierCV
 
-models = {"SVM" : LinearSVC, "DT" : DecisionTreeClassifier, "RF" : RandomForestClassifier, "LR" : LogisticRegression}
+models = {"SVM": LinearSVC, "DT": DecisionTreeClassifier, "RF": RandomForestClassifier, "LR": LogisticRegression}
 
 def final_ml_preprocessing(train, test, sampling, seed):
     """
@@ -36,11 +36,11 @@ def final_ml_preprocessing(train, test, sampling, seed):
     y_test = y_test.reset_index(drop=True)
 
     # tf-idf
-    all_text = X_train["text_clean"].values.tolist() + X_test["text_clean"].values.tolist()
+    all_text = X_train["text"].values.tolist() + X_test["text"].values.tolist()
     vocab = pr.flatten_words(all_text, get_unique=True)
     tfidf = TfidfVectorizer(stop_words='english', vocabulary=vocab)
-    training_matrix = tfidf.fit_transform(X_train["text_clean"])
-    test_matrix = tfidf.fit_transform(X_test["text_clean"])
+    training_matrix = tfidf.fit_transform(X_train["text"])
+    test_matrix = tfidf.fit_transform(X_test["text"])
 
     # print("Training matrix:", training_matrix.shape)
     # print("Test matrix:", test_matrix.shape)
@@ -51,7 +51,7 @@ def final_ml_preprocessing(train, test, sampling, seed):
     # scaling data
     scaler = MinMaxScaler()
     features = list(
-        set(X_train.columns) - {"text", "text_clean", "label"})  # all columns except text, text_clean and Label
+        set(X_train.columns) - {"text", "label"})  # all columns except text and Label
     X_train = scaler.fit_transform(X_train[features].values)
     y_train = y_train.values
     X_test = scaler.transform(X_test[features].values)
@@ -98,8 +98,8 @@ def ml_training(X_train, y_train, X_test, y_test, pred, res, res_index, seed):
         # evaluation metrics
 
         print("\n", new_row["model"], "RESULTS:\n")
-        row = eval.evalmetrics(y_test = y_test,
-                               y_pred = pred_class_test)
+        row = eval.evalmetrics(y_test=y_test,
+                               y_pred=pred_class_test)
         new_row.update(row)
         res = pd.concat([res, pd.DataFrame([new_row])], ignore_index=True, axis=0) #res update
 

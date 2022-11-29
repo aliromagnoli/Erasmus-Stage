@@ -14,9 +14,8 @@ Original file is located at
 import methods_data_import_and_preprocessing as pr
 import methods_evaluation_metrics as eval
 import spacy
-spacy.cli.download("en_core_web_sm")
 import pandas as pd
-from torch.nn import functional as F
+from torch.nn import Sigmoid
 import torch
 import random
 torch.cuda.empty_cache()
@@ -27,9 +26,11 @@ import torch.optim as optim
 import time
 from IPython.display import display
 
+spacy.cli.download("en_core_web_sm")
+
 # PARAMETERS
 
-torch.manual_seed(1009)
+torch.manual_seed(123)
 torch.backends.cudnn.deterministic = True
 
 # FIELD: how the data should be processed
@@ -49,18 +50,6 @@ N_LAYERS = 5
 BIDIRECTIONAL = True
 DROPOUT = 0.5
 N_EPOCHS = 20
-
-
-def maintain_only_text_label(df, clean_text):
-    # removal and renaming of columns
-    if clean_text:
-        df.drop(labels=df.columns.difference(['label', "text_clean"]), axis=1, inplace=True)
-        df.rename(columns={'text_clean': 'text'}, inplace=True)
-    else:
-        df.drop(df.columns.difference(['label', "text"]), 1, inplace=True)
-
-    print(df.shape)
-    return df  # dataset with "label and text"
 
 
 def final_nn_preprocessing(train, test, sampling, seed):
@@ -274,15 +263,15 @@ def train_model(model, iterator, criterion, optimizer, epoch, res_index): # iter
         text, text_lengths = batch.text  # separate batch.text
 
         # feed the batch of sentences, text, and their lengths, text_lengths into the model
-        predictions = model(text, text_lengths).squeeze(1)
-        predictions_prob = F.softmax(predictions, dim=-1)#.detach().numpy()
+        logits = model(text, text_lengths).squeeze(1) #squeeze since the predictions are initially size [batch size, 1]
+        s = Sigmoid() #, dim=-1)#.detach().numpy()
+        predictions = s(logits)
 
-        # squeeze is needed as the predictions are initially size [batch size, 1]
-        pred.append(predictions_prob.cpu())
+        pred.append(predictions.cpu())
         target.append(batch.label.cpu())
 
         # computation of loss
-        loss = criterion(predictions, batch.label)
+        loss = criterion(logits, batch.label)
 
         loss.backward()  # calculate the gradient of each parameter
         optimizer.step()  # update the parameters using the gradients and optimizer algorithm
@@ -290,7 +279,7 @@ def train_model(model, iterator, criterion, optimizer, epoch, res_index): # iter
         epoch_loss += loss.item()
 
     pred_df = pd.DataFrame()
-    pred_df["pred"] = [item for sublist in pred for item in sublist]
+    pred_df["pred"] = [item for sublist in pred for item in sublist] #item.detach().numpy()
     pred_df["target"] = [item for sublist in target for item in sublist]
     pred_df["target"] = pred_df["target"].astype("float32")
 
@@ -332,7 +321,9 @@ def evaluate_model(model, iterator, criterion, epoch, res_index, set_type):  # s
             text, text_lengths = batch.text  # separate batch.text
 
             predictions = model(text, text_lengths).squeeze(1)
-            predictions_prob = F.softmax(predictions, dim=-1) #.detach().numpy()
+             #F.softmax(predictions, dim=-1) #.detach().numpy()
+            s = Sigmoid()  # , dim=-1)#.detach().numpy()
+            predictions_prob = s(predictions)
 
             pred.append(predictions_prob.cpu())
             target.append(batch.label.cpu())
@@ -403,21 +394,21 @@ def nn_training(train_data, valid_data, test_data, dataset, res_index, res, epoc
         start_time = time.time()
 
         # training
-        train_results, train_preds = train_model(model = model,
-                                                 iterator = train_iterator,
-                                                 criterion = criterion,
-                                                 optimizer = optimizer,
-                                                 epoch = epoch+1,
-                                                 res_index = res_index)
+        train_results, train_preds = train_model(model=model,
+                                                 iterator=train_iterator,
+                                                 criterion=criterion,
+                                                 optimizer=optimizer,
+                                                 epoch=epoch+1,
+                                                 res_index=res_index)
         pred_df = pd.concat([pred_df, pd.DataFrame([train_preds])], ignore_index=True, axis=0)
 
         # evaluation
-        val_results, val_preds = evaluate_model(model = model,
-                                                iterator = valid_iterator,
-                                                criterion = criterion,
-                                                epoch = epoch+1,
-                                                res_index = res_index,
-                                                set_type = "validation")
+        val_results, val_preds = evaluate_model(model=model,
+                                                iterator=valid_iterator,
+                                                criterion=criterion,
+                                                epoch=epoch+1,
+                                                res_index=res_index,
+                                                set_type="validation")
         pred_df = pd.concat([pred_df, pd.DataFrame([val_preds])], ignore_index=True, axis=0)
 
         # computation of time
@@ -427,10 +418,24 @@ def nn_training(train_data, valid_data, test_data, dataset, res_index, res, epoc
         # at each epoch, if the validation loss is the best seen so far,
         # we'll save the parameters of the model and then, after training has finished,
         # we'll use that model on the test set
+
         if val_results["loss"] < best_val_results["loss"]:
             best_train_results = train_results
             best_val_results = val_results
             torch.save(model.state_dict(), 'tut2-model.pt')
+
+        # better_recall = (val_results["recall"] > best_val_results["recall"])
+        # same_recall_better_precision = (val_results["recall"] == best_val_results["recall"]) and \
+        #                                (val_results["precision"] > best_val_results["precision"])
+        #
+        # if better_recall or same_recall_better_precision:
+        #     best_train_results = train_results
+        #     best_val_results = val_results
+        #     torch.save(model.state_dict(), 'tut2-model.pt')
+        # if epoch == (N_EPOCHS-1) and val_results["recall"] == 0:
+        #     best_train_results = train_results
+        #     best_val_results = val_results
+        #     torch.save(model.state_dict(), 'tut2-model.pt')
 
         # results for each epoch
         print(f'Epoch: {epoch+1:02} | Epoch Time: {epoch_mins}m {epoch_secs}s')
@@ -452,12 +457,12 @@ def nn_training(train_data, valid_data, test_data, dataset, res_index, res, epoc
 
     # test loss and accuracy (using parameters that gave the best validation loss)
     model.load_state_dict(torch.load('tut2-model.pt'))
-    test_results, test_preds = evaluate_model(model = model,
-                                              iterator = test_iterator,
-                                              criterion = criterion,
-                                              epoch = best_train_results["epoch"],
-                                              res_index = res_index,
-                                              set_type = "test")
+    test_results, test_preds = evaluate_model(model=model,
+                                              iterator=test_iterator,
+                                              criterion=criterion,
+                                              epoch=best_train_results["epoch"],
+                                              res_index=res_index,
+                                              set_type="test")
 
     print(
         f'\nTest Loss: {test_results["loss"]} | Test Acc: {test_results["accuracy"]}% | Test Recall: {test_results["recall"]}% | Test Precision: {test_results["precision"]}% | Test F2: {test_results["f2_score"]}% | Test F3: {test_results["f3_score"]}%')

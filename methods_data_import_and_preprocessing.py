@@ -2,6 +2,9 @@ import pandas as pd
 from nltk.tokenize import regexp_tokenize
 import re
 from imblearn.over_sampling import RandomOverSampler
+import spacy
+nlp = spacy.load('en_core_web_sm')
+all_stopwords = nlp.Defaults.stop_words
 
 """
 # Data Import
@@ -200,5 +203,100 @@ def flatten_words(l, get_unique=False):
         return [w for sent in qa for w in sent]
 
 
+def additional_preprocessing(df):
 
+    for index, text in enumerate(df["text"]):
+        doc = nlp(text)
+        l = []
+        # lemmatization
+        for token in doc:
+            l.append(token.lemma_)
+        #stopwords removal
+        l = [word for word in l if not word in nlp.Defaults.stop_words]
+        final_text = " ".join(map(str, l))
+        #print(final_text)
+        df.at[index, "text"] = final_text
 
+    return df
+
+def maintain_only_text_label(df, cleantext, paraphrasing, approach):
+
+    if cleantext:
+        df.drop(["text"], axis=1, inplace=True)
+        rename_columns({"text_clean": "text"}, df)
+    else:
+        df.drop(["text_clean"], axis=1, inplace=True)
+
+    if paraphrasing:
+        cols = ["label", "text", "paraphrased_text"]
+    else:
+        cols = ["label", "text"]
+
+    if approach != "ML":
+        df.drop(labels=df.columns.difference(cols), axis=1, inplace=True) #remove everything except cols
+    else:
+        if not paraphrasing:
+            df.drop(labels=["paraphrased_text"], axis=1, inplace=True)
+
+    print(df.shape)
+    return df  # dataset with "label and text"
+
+def sorting_for_training(df, batch_size):
+
+    positive_df = df[df["label"] == 1].copy()
+    negative_df = df[df["label"] == 0].copy()
+
+    n_pos = round(batch_size/2)
+    n_neg = round(batch_size/2)
+
+    if (batch_size % 2) != 0:
+      n_neg = n_neg + 1
+
+    if len(positive_df) < n_pos:
+      n_pos = len(positive_df)
+      n_neg = batch_size - n_pos
+
+    n_batches = round(len(negative_df)/n_neg)
+
+    if ((len(negative_df)/n_neg) % 2) != 0:
+      n_batches = n_batches + 1
+
+    sorted_df = pd.DataFrame()
+
+    for index in range(n_batches):
+
+        pos = positive_df.sample(n=n_pos)
+
+        neg = negative_df[:n_neg]
+        negative_df.drop(index=negative_df.index[:n_neg], axis=0, inplace=True)
+
+        batch = pd.concat([pos, neg], ignore_index=True)
+        batch = batch.sample(frac=1).reset_index(drop=True)
+
+        sorted_df = pd.concat([sorted_df, batch], ignore_index=True)
+
+    return sorted_df
+
+def perform_options(train, test, paraphrasing, text_preprocessing, sorting, cleantext, batch_size):
+
+    if paraphrasing:
+        new_rows = train[train.columns.difference(["text"])].copy() #every column except text
+        rename_columns({"paraphrased_text": "text"}, new_rows)
+        new_rows = new_rows.dropna().reset_index(drop=True)
+        if cleantext:
+            new_rows["text"] = clean_text(new_rows, "text")
+        train.drop(labels="paraphrased_text", axis=1, inplace=True)
+        train = pd.concat([train, new_rows], ignore_index=True)
+        test.drop(labels="paraphrased_text", axis=1, inplace=True)
+
+    train.reset_index(drop=True, inplace=True)
+    test.reset_index(drop=True, inplace=True)
+
+    if text_preprocessing:
+        train = additional_preprocessing(train)
+        test = additional_preprocessing(test)
+
+    if sorting:
+        train = sorting_for_training(train, batch_size)
+
+    return train, test

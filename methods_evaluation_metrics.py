@@ -6,7 +6,7 @@
 import numpy as np
 import pandas as pd
 import math
-from sklearn.metrics import accuracy_score, recall_score, precision_score, fbeta_score, confusion_matrix, classification_report
+from sklearn.metrics import accuracy_score, recall_score, precision_score, fbeta_score, confusion_matrix
 from torch.nn import functional as F
 import torch
 
@@ -19,11 +19,13 @@ def tl_metrics(pred):
 
     labels = pred.label_ids
     preds = pred.predictions.argmax(-1)
-    return evalmetrics(y_test=labels, y_pred=preds, logit_scores=pred.predictions)
+    return evalmetrics(y_test=labels,
+                       y_pred=preds,
+                       logit_scores=pred.predictions,
+                       dataframe=False)
 
 
-def evalmetrics(y_test, y_pred, logit_scores=None):
-
+def evalmetrics(y_test, y_pred, logit_scores=None, dataframe=True):
     """
     Given a dataset "res" to store the metrics in, a dataset "y_test" with the
     target labels, a dataset "y_pred" with the predicted labels, a list "labels"
@@ -49,17 +51,43 @@ def evalmetrics(y_test, y_pred, logit_scores=None):
     FN = cm.sum(axis=1) - np.diag(cm)
     TP = np.diag(cm)
     TN = cm.sum() - (FP + FN + TP)
-    TNR = TN / (TN + FP)
+
+    if (TN + FP)[1] > 0:
+        TNR = TN / (TN + FP)
+    else:
+        TNR = 0
+
+    if (FP + TP)[1] > 0:
+        FP_ratio = round(((FP / (FP + TP)) * 100)[1], 2)
+        TP_ratio = round(((TP / (FP + TP)) * 100)[1], 2)
+    else:
+        FP_ratio = 0
+        TP_ratio = 0
+
+    if (FN + TN)[1] > 0:
+        FN_ratio = round(((FN / (FN + TN)) * 100)[1], 2)
+        TN_ratio = round(((TN / (FN + TN)) * 100)[1], 2)
+    else:
+        FN_ratio = 0
+        TN_ratio = 0
 
     # evaluation metrics
-    #report = classification_report(y_test, y_pred, output_dict=True, zero_division=0)
-    #print(pd.DataFrame(report).transpose().round(decimals=3))
-    row = {'accuracy': accuracy * 100,
-           'precision': precision * 100,
-           'recall': recall * 100,
-           'true_negative_rate': TNR[1] * 100,
-           'f2_score': f2 * 100,
-           'f3_score': f3 * 100}
+    # report = classification_report(y_test, y_pred, output_dict=True, zero_division=0)
+    # print(pd.DataFrame(report).transpose().round(decimals=3))
+    row = {'accuracy': round(accuracy * 100, 2),
+           'precision': round(precision * 100, 2),
+           'recall': round(recall * 100, 2),
+           'true_negative_rate': round(TNR[1] * 100, 2),
+           'f2_score': round(f2 * 100, 2),
+           'f3_score': round(f3 * 100, 2),
+           "fp": FP[1],
+           "fn": FN[1],
+           "tp": TP[1],
+           "tn": TN[1],
+           "fp_ratio": FP_ratio,
+           "fn_ratio": FN_ratio,
+           "tp_ratio": TP_ratio,
+           "tn_ratio": TN_ratio}
 
     if logit_scores is not None:
         # convert logit score to torch array
@@ -68,14 +96,19 @@ def evalmetrics(y_test, y_pred, logit_scores=None):
         y_pred = F.softmax(torch_logits, dim=-1).numpy()[:, 1]
         pred_df = arrange_predictions_and_targets(pred=y_pred,
                                                   target=y_test)
-        row.update({"pred_df" : pred_df})
+        row.update({"pred_df": pred_df})
+
+    if not dataframe:
+        row["pred_df"] = row["pred_df"].to_dict()
 
     return row
+
 
 def softmax(x):
     """Compute softmax values for each sets of scores in x."""
     e_x = np.exp(x - np.max(x))
     return e_x / e_x.sum()
+
 
 def update_avg_res(res, avg_res, condition, new_condition):
     for column in res.columns[res.columns.get_loc("accuracy"):]:  # every column from accuracy column
@@ -87,6 +120,7 @@ def update_avg_res(res, avg_res, condition, new_condition):
         avg_res.loc[new_condition, std_column] = round(res.loc[condition, column].std(), 2)
 
     return avg_res
+
 
 def compute_avg_std(res, approach):
     """
@@ -102,16 +136,16 @@ def compute_avg_std(res, approach):
                 condition = (res["df"] == k) & (res["model"] == j)
 
                 new_row = {"df": k, "model": j}
-                avg_res = pd.concat([avg_res, pd.DataFrame([new_row])], ignore_index=True, axis=0)  #avg_res update
+                avg_res = pd.concat([avg_res, pd.DataFrame([new_row])], ignore_index=True, axis=0)  # avg_res update
                 new_condition = (avg_res["df"] == k) & (avg_res["model"] == j)
 
-                avg_res = update_avg_res(res = res,
-                                         avg_res = avg_res,
-                                         condition = condition,
-                                         new_condition = new_condition)
+                avg_res = update_avg_res(res=res,
+                                         avg_res=avg_res,
+                                         condition=condition,
+                                         new_condition=new_condition)
 
 
-    elif approach in ["NN", "TL"]:
+    elif approach in ["NN", "TL", "FT"]:
         for k in res["df"].unique():
             for j in res["model"].unique():
                 for h in res["set"].unique():
@@ -134,7 +168,6 @@ def sigmoid(x):
 
 
 def arrange_predictions_and_targets(pred, target):
-
     # create dataframe that contain predictions and targets
     temp = pd.DataFrame()
     temp["prediction_value"] = pred
@@ -181,9 +214,9 @@ def get_rank_at_k(df, total_relevant_docs, K=95):
 
 
 def compute_rank_based_metrics(pred, res, approach, K=95):
-    #sort predictions
-    pred_df = arrange_predictions_and_targets(pred=pred["pred"],
-                                              target=pred["target"])
+    # sort predictions
+    pred_df = arrange_predictions_and_targets(pred=pred["pred"].squeeze(),
+                                              target=pred["target"].squeeze())
     # compute TP, TN, FP, FN
     TP, TN, FP, FN = getTpTnFpFn(pred_df)
     retrieved_docs = TP + FP
@@ -194,8 +227,8 @@ def compute_rank_based_metrics(pred, res, approach, K=95):
 
     # selection of the rows where recall@95
     last_positive_rank = get_rank_at_k(pred_df, relevant_docs)
-    pred_df_95 = pred_df[:last_positive_rank+1]
-    pred_df_5 = pred_df[last_positive_rank+1:]
+    pred_df_95 = pred_df[:last_positive_rank + 1]
+    pred_df_5 = pred_df[last_positive_rank + 1:]
     TP_95, TN_95, FP_95, FN_95 = getTpTnFpFn(pred_df_95)
     TP_5, TN_5, FP_5, FN_5 = getTpTnFpFn(pred_df_5)
 
@@ -220,7 +253,7 @@ def compute_rank_based_metrics(pred, res, approach, K=95):
     # update results dataset
     if approach == "ML":
         condition = (res["df"] == pred["df"]) & (res["model"] == pred["model"]) & (res["fold"] == pred["fold"])
-    elif approach in ["NN", "TL"]:
+    elif approach in ["NN", "TL", "FT"]:
         condition = (res["df"] == pred["df"]) & (res["set"] == pred["set"]) & (res["fold"] == pred["fold"])
     res.loc[condition, "true_negative_rate@95"] = round(TNR_k * 100, 2)
     res.loc[condition, "precision@95"] = round(precision_k * 100, 2)
@@ -242,11 +275,12 @@ def adjust_pred(pred, approach):
             for f in pred["fold"].unique():
                 rows = pred.loc[(pred["df"] == d) & (pred[col] == c) & (pred["fold"] == f)]
                 rows = rows.reset_index(drop=True)
-                new_row = {"df" : d, col : c, "fold" : f,
-                           "target" : pd.concat([rows.loc[0, "target"], rows.loc[1, "target"]], ignore_index=True, axis=0),
-                           "pred" : pd.concat([rows.loc[0, "pred"], rows.loc[1, "pred"]], ignore_index=True, axis=0)}
+                new_row = {"df": d, col: c, "fold": f,
+                           "target": pd.concat([rows.loc[0, "target"], rows.loc[1, "target"]], ignore_index=True,
+                                               axis=0),
+                           "pred": pd.concat([rows.loc[0, "pred"], rows.loc[1, "pred"]], ignore_index=True, axis=0)}
                 if approach != "ML":
-                    new_row.update({"model" : pred["model"].unique()[0]})
+                    new_row.update({"model": pred["model"].unique()[0]})
                 pred_df = pd.concat([pred_df, pd.DataFrame([new_row])], ignore_index=True, axis=0)
 
     return pred_df

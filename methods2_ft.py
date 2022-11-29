@@ -4,7 +4,9 @@ import numpy as np
 import methods_evaluation_metrics as eval
 import methods_data_import_and_preprocessing as pr
 
-def final_preprocessing(train, test, sampling, seed, path):
+N_EPOCHS = 20
+
+def final_ft_preprocessing(train, test, sampling, seed, path):
 
     # OVERSAMPLING ON TRAINING SET
     X_ros, y_ros = pr.oversampling(train["text"].values.reshape(-1, 1), train["label"].values, sampling, seed)
@@ -39,9 +41,9 @@ def get_predictions(test, model):
 
     metric_row = eval.evalmetrics(y_test=true_label,
                                   y_pred=pred_label)
-    return metric_row
+    return metric_row, true_label, pred_label, pred_value
 
-def training(train, test, res_index, res, pred):
+def ft_training(train, test, res_index, res, pred):
 
     row = {"df": res_index.get_df(),
            "model": "FT",
@@ -49,14 +51,21 @@ def training(train, test, res_index, res, pred):
            "fold": res_index.get_fold(),
            "iteration": res_index.get_iter()}
 
-    model = fasttext.train_supervised(input=train, lr=1.0, epoch=20)
+    model = fasttext.train_supervised(input=train, lr=1.0, epoch=N_EPOCHS)
+    metric_row, target, pred_label, pred_value = get_predictions(test, model)
 
-    metric_row = get_predictions(test, model)
-    m_new_row = row.copy()
-    m_new_row.update(metric_row)
+    #update res
+    m_row = row.copy()
+    m_row.update(metric_row)
+    res = pd.concat([res, pd.DataFrame([m_row])], ignore_index=True, axis=0)
 
-    #DA QUI
-    m_new_row = row.copy()
+    #update pred
+    p_row = row.copy()
+    p_row.update({"target": pd.Series(target), "pred": pd.Series(pred_value)})
+    pred = pd.concat([pred, pd.DataFrame([p_row])], ignore_index=True, axis=0)
+
+    return res, pred
+
 
 
 
